@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+if [ "${1:-}" = "exec" ]; then
+  shift
+  exec /usr/bin/codex exec --skip-git-repo-check "$@"
+else
+  exec /usr/bin/codex "$@"
+fi

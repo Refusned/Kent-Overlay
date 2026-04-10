@@ -1,0 +1,51 @@
+[
+  {
+    "id": "morning-briefing",
+    "name": "Утренний брифинг",
+    "schedule": "0 7 * * *",
+    "timezone": "${CLIENT_TZ}",
+    "channel": "telegram",
+    "peer": "${CLIENT_TELEGRAM_ID}",
+    "prompt": "Проведи утренний брифинг. Включи:\n1. Погоду на сегодня (город клиента из USER.md)\n2. Встречи из Google Calendar (если подключён)\n3. Непрочитанные важные письма из Gmail (если подключён)\n4. Задачи и дедлайны из памяти\n5. Запланированные посты на сегодня из workspace/content/calendar.md\n\nФормат: кратко, по пунктам, максимум 200 слов."
+  },
+  {
+    "id": "health-check",
+    "name": "Health Check",
+    "schedule": "0 */4 * * *",
+    "timezone": "UTC",
+    "useLlm": false,
+    "exec": "bash -c 'CPU=$(top -bn1 | grep Cpu | awk \"{print $2}\"); MEM=$(free -m | awk \"/Mem:/{print $3/$2*100}\"); DISK=$(df -h / | awk \"NR==2{print $5}\"); echo \"CPU: ${CPU}% MEM: ${MEM}% DISK: ${DISK}\"'",
+    "alertOn": "error",
+    "alertChannel": "telegram",
+    "alertPeer": "${OPERATOR_TELEGRAM_CHAT_ID}"
+  },
+  {
+    "id": "weekly-report",
+    "name": "Еженедельный отчёт",
+    "schedule": "0 9 * * 1",
+    "timezone": "${CLIENT_TZ}",
+    "channel": "telegram",
+    "peer": "${CLIENT_TELEGRAM_ID}",
+    "prompt": "Подготовь еженедельный отчёт:\n1. Итоги прошлой недели — что сделано, ключевые события\n2. Предстоящие дедлайны и встречи на эту неделю\n3. Статистика: сколько задач закрыто, лидов обработано\n4. Рекомендации на неделю\n\nИспользуй данные из memory/ и workspace/. Формат: структурированный, кратко."
+  },
+  {
+    "id": "smm-reminder",
+    "name": "SMM-напоминание",
+    "schedule": "0 10 * * 1,3,5",
+    "timezone": "${CLIENT_TZ}",
+    "channel": "telegram",
+    "peer": "${CLIENT_TELEGRAM_ID}",
+    "prompt": "Проверь контент-план в workspace/content/calendar.md и workspace/smm/strategy.md.\n\n1. Есть ли запланированный пост на сегодня? Если да — покажи тему и спроси: \"Подготовить пост с фото?\"\n2. Есть ли незакрытые посты за прошлые дни? Если да — напомни.\n3. Если контент-план пуст — предложи создать на эту неделю.\n\nФормат: кратко, 1-2 предложения."
+  },
+  {
+    "id": "daily-backup",
+    "name": "Ежедневный бэкап",
+    "schedule": "0 3 * * *",
+    "timezone": "UTC",
+    "useLlm": false,
+    "exec": "bash ~/.openclaw/scripts/backup.sh",
+    "alertOn": "error",
+    "alertChannel": "telegram",
+    "alertPeer": "${OPERATOR_TELEGRAM_CHAT_ID}"
+  }
+]

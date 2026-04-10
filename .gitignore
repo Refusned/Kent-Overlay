@@ -1,0 +1,45 @@
+# Секреты
+.env
+credentials/
+sessions/
+
+# Данные клиента
+memory/
+gateway.db
+
+# Логи
+logs/
+*.log
+
+# Браузер
+browser-data/
+
+# Node
+node_modules/
+*.lock
+pnpm-lock.yaml
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Бэкапы
+*.tar.gz
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PID
+gateway.pid

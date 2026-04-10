@@ -1,0 +1,263 @@
+{
+  // ═══════════════════════════════════════════════════════════════
+  //  OpenClaw — единый конфиг для продукта Kent AI Assistant
+  //  Формат: JSON5 (допускаются комментарии)
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Шлюз и безопасность ──────────────────────────────────────
+  "gateway": {
+    "port": 18789,                          // порт API-шлюза
+    "bind": "loopback",                     // слушать только localhost
+    "auth": {
+      "mode": "token",                      // аутентификация по токену
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"  // токен берётся из переменной окружения
+    },
+    "controlUi": {
+      "allowedOrigins": ["http://localhost"],  // доступ к панели управления только с localhost
+      "allowInsecureAuth": false,              // запретить небезопасную аутентификацию
+      "dangerouslyDisableDeviceAuth": false    // не отключать проверку устройства
+    },
+    "channelHealthCheckMinutes": 5,            // интервал проверки здоровья каналов (мин.)
+    "channelStaleEventThresholdMinutes": 30,   // порог устаревания событий канала (мин.)
+    "channelMaxRestartsPerHour": 10            // макс. перезапусков канала в час
+  },
+
+  // ── Настройки агентов по умолчанию ───────────────────────────
+  "agents": {
+    "defaults": {
+      "sandbox": {
+        "mode": "non-main",               // песочница для всех кроме основного потока
+        "scope": "agent",                 // изоляция на уровне агента
+        "backend": "docker",              // бэкенд — Docker-контейнер
+        "workspaceAccess": "rw",          // чтение и запись в рабочую область
+        "docker": {
+          "network": "bridge",            // сеть Docker
+          "user": "1000:1000"             // пользователь внутри контейнера
+        }
+      },
+      "params": {
+        "cacheRetention": "short"         // краткое хранение кэша
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",              // обрезка контекста по TTL кэша
+        "ttl": "1h",                      // время жизни контекста — 1 час
+        "keepLastAssistants": 3           // сохранять последние 3 ответа ассистента
+      },
+      "compaction": {
+        "reserveTokensFloor": 40000,      // минимальный резерв токенов при сжатии
+        "memoryFlush": {
+          "enabled": true,                // включить сброс памяти при сжатии
+          "softThresholdTokens": 4000     // мягкий порог (токены) для запуска сброса
+        },
+        "systemPrompt": "Ты — Kent, AI-ассистент для бизнеса и маркетинга. Сохрани ключевые факты из беседы.",
+        "prompt": "Кратко зафиксируй главное из этого диалога на русском языке."
+      }
+    }
+  },
+
+  // ── Память ───────────────────────────────────────────────────
+  "memory": {
+    "memorySearch": {
+      "provider": "local",                // локальный поиск по памяти
+      "hybrid": {
+        "vectorWeight": 0.7,              // вес векторного поиска
+        "textWeight": 0.3,                // вес текстового поиска
+        "temporalDecay": {
+          "halfLifeDays": 30              // полупериод затухания актуальности (дни)
+        }
+      }
+    },
+    "backend": "qmd",                     // хранилище памяти — QMD-файлы
+    "includeDefaultMemory": true,         // включать память по умолчанию
+    "update": {
+      "interval": "5m",                   // интервал обновления памяти
+      "onBoot": true                      // обновить память при запуске
+    },
+    "limits": {
+      "maxResults": 6,                    // макс. кол-во результатов из памяти
+      "maxSnippetChars": 700,             // макс. длина фрагмента (символы)
+      "timeoutMs": 4000                   // таймаут запроса к памяти (мс)
+    }
+  },
+
+  // ── Инструменты (tools) ──────────────────────────────────────
+  "tools": {
+    "fs": {
+      "workspaceOnly": true               // файловый доступ только внутри рабочей области
+    },
+    "exec": {
+      "security": "allowlist",            // политика запуска команд — по белому списку
+      "ask": "always",                    // всегда спрашивать подтверждение
+      "askFallback": "deny",              // если не спросить — запретить
+      "allowlist": [
+        "python3 ~/.openclaw/workspace/tools/*",
+        "python3 ~/.openclaw/workspace/scripts/*",
+        "bash ~/.openclaw/workspace/scripts/*",
+        "bash ~/.openclaw/workspace/skills/*/scripts/*",
+        "python3 ~/.openclaw/workspace/skills/*/scripts/*"
+      ]
+    },
+    "deny": [                             // запрещённые инструменты
+      "group:automation",
+      "sessions_spawn",
+      "nodes",
+      "canvas",
+      "llm_task"
+    ],
+    "web": {
+      "fetch": {
+        "enabled": true                   // разрешить HTTP-запросы
+      }
+    },
+    "imageGeneration": {
+      "provider": "chatgpt",             // генерация картинок через ChatGPT
+      "auth": "chatgpt:default"          // профиль авторизации для генерации
+    }
+  },
+
+  // ── Подтверждения (approvals) ────────────────────────────────
+  "approvals": {
+    "exec": {
+      "enabled": true                     // требовать подтверждение для выполнения команд
+    }
+  },
+
+  // ── Профили авторизации ──────────────────────────────────────
+  "auth": {
+    "profiles": {
+      "codex:default": {
+        "provider": "codex",              // провайдер Codex
+        "mode": "oauth"                   // авторизация через OAuth
+      },
+      "chatgpt:default": {
+        "provider": "openai",             // провайдер OpenAI
+        "mode": "oauth"                   // авторизация через OAuth
+      }
+    },
+    "order": {
+      "codex": ["codex:default"]          // приоритет профилей для Codex
+    }
+  },
+
+  // ── Канал Telegram ───────────────────────────────────────────
+  "channels": {
+    "telegram": {
+      "enabled": true,                    // Telegram-канал включён
+      "botToken": "${TELEGRAM_BOT_TOKEN}",// токен бота из переменной окружения
+      "dmPolicy": "pairing",             // политика личных сообщений — привязка
+      "allowFrom": ["${CLIENT_TELEGRAM_ID}"], // разрешённые пользователи (ID клиента)
+      "streaming": "partial",             // потоковая отправка — частичная
+      "textChunkLimit": 4000,             // макс. длина текстового чанка
+      "chunkMode": "newline",             // разделение чанков по новой строке
+      "linkPreview": false,               // отключить предпросмотр ссылок
+      "ackReaction": "👔",               // реакция-подтверждение получения
+      "groups": {
+        "*": {
+          "requireMention": true          // в группах отвечать только по упоминанию
+        },
+        "allowlist": [                    // разрешённые группы
+          "${GROUP_1_ID}",
+          "${GROUP_2_ID}"
+        ]
+      },
+      "healthMonitor": {
+        "enabled": true                   // мониторинг здоровья Telegram-канала
+      },
+      "customCommands": {
+        "help":      { "description": "Справка по командам бота" },
+        "lead":      { "description": "Создать или обработать лид" },
+        "content":   { "description": "Генерация контента для соцсетей" },
+        "faq":       { "description": "Часто задаваемые вопросы" },
+        "brief":     { "description": "Составить бриф для задачи" },
+        "home":      { "description": "Вернуться в главное меню" },
+        "draw":      { "description": "Сгенерировать изображение" },
+        "slides":    { "description": "Создать презентацию" },
+        "smm":       { "description": "Планирование SMM-публикаций" },
+        "code":      { "description": "Помощь с кодом и скриптами" },
+        "crm":       { "description": "Управление клиентской базой" },
+        "broadcast": { "description": "Массовая рассылка сообщений" },
+        "settings":  { "description": "Настройки бота" },
+        "feedback":  { "description": "Оставить отзыв или предложение" },
+        "status":    { "description": "Текущий статус системы" }
+      }
+    }
+  },
+
+  // ── Медиа ────────────────────────────────────────────────────
+  "media": {
+    "transcription": {
+      "provider": "local",                // локальная транскрипция
+      "engine": "faster-whisper",         // движок распознавания речи
+      "model": "base",                    // модель — base
+      "language": "ru"                    // язык — русский
+    }
+  },
+
+  // ── Навыки (skills) ──────────────────────────────────────────
+  "skills": {
+    "allowBundled": [                     // разрешённые встроенные навыки
+      "gog",
+      "github",
+      "healthcheck",
+      "weather",
+      "summarize",
+      "clawhub",
+      "session-logs"
+    ],
+    "install": {
+      "nodeManager": "pnpm"              // менеджер пакетов для установки навыков
+    }
+  },
+
+  // ── Плагины ──────────────────────────────────────────────────
+  "plugins": {
+    "memory-core": {
+      "dreaming": {
+        "mode": "core",                  // режим «сновидений» — основной
+        "recencyHalfLifeDays": 21,       // полупериод актуальности воспоминаний (дни)
+        "maxAgeDays": 30                 // макс. возраст записи в памяти (дни)
+      }
+    }
+  },
+
+  // ── Планировщик (cron) ───────────────────────────────────────
+  "cron": {
+    "enabled": true,                     // планировщик включён
+    "maxConcurrentRuns": 2,              // макс. одновременных задач
+    "sessionRetention": "24h",           // хранение сессий планировщика — 24 часа
+    "runLog": {
+      "maxBytes": "2mb",                 // макс. размер лога запуска
+      "keepLines": 2000                  // кол-во строк лога для хранения
+    }
+  },
+
+  // ── Сессии ───────────────────────────────────────────────────
+  "session": {
+    "dmScope": "per-channel-peer"        // область сессии — отдельная на каждого собеседника в канале
+  },
+
+  // ── Логирование ──────────────────────────────────────────────
+  "logging": {
+    "level": "info",                     // уровень логирования — info
+    "consoleLevel": "warn",              // уровень вывода в консоль — warn
+    "redactSensitive": "tools",          // скрывать чувствительные данные в логах инструментов
+    "file": "~/.openclaw/logs/openclaw.log" // путь к файлу логов
+  },
+
+  // ── Обновления ───────────────────────────────────────────────
+  "update": {
+    "channel": "stable"                  // канал обновлений — стабильный
+  },
+
+  // ── Сообщения ────────────────────────────────────────────────
+  "messages": {
+    "responsePrefix": "",                // без префикса к ответам
+    "ackReactionScope": "direct",        // реакция-подтверждение только в личных сообщениях
+    "removeAckAfterReply": true,         // убирать реакцию после ответа
+    "queue": {
+      "mode": "collect",                 // режим очереди — накопление
+      "debounceMs": 2000,               // задержка перед обработкой (мс)
+      "cap": 10                          // макс. сообщений в очереди
+    }
+  }
+}
