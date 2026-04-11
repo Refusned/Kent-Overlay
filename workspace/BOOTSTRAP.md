@@ -32,7 +32,7 @@ openclaw channels status
 
 ### 5. Удалить этот файл
 ```
-rm BOOTSTRAP.md
+trash BOOTSTRAP.md
 ```
 После успешного выполнения всех шагов — удалить этот файл.
-Он больше не нужен.
+Он больше не нужен. Используй `trash` вместо `rm` согласно SECURITY.md.

@@ -7,7 +7,7 @@ if [ $# -lt 1 ]; then
 fi
 
 URL="$1"
-OUTDIR="${2:-/root/.openclaw/workspace/summaries-test}"
+OUTDIR="${2:-/root/.openclaw/workspace/summaries}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WRAPPER_BIN="$SCRIPT_DIR/bin"
 mkdir -p "$OUTDIR"

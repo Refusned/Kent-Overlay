@@ -1,6 +1,20 @@
 ---
 name: youtube-summary
+emoji: "\U0001F4FA"
 description: Summarize YouTube videos from a link using the local Summarizely + yt-dlp + Codex CLI pipeline without separate provider API keys. Use when the user sends a YouTube URL and wants a concise or detailed summary, key points, or the main idea of the video.
+triggers:
+  - "саммари видео"
+  - "пересказ видео"
+  - "о чём видео"
+  - "кратко видео"
+  - "суть видео"
+  - "ключевые мысли видео"
+requires:
+  bins:
+    - yt-dlp
+    - summarizely
+exec: "bash ~/.openclaw/workspace/skills/youtube-summary/scripts/youtube_summarize.sh"
+storage: workspace/summaries/
 ---
 
 # YouTube Summary

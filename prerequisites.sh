@@ -3,7 +3,10 @@ set -euo pipefail
 
 # ============================================================================
 # prerequisites.sh — Проверка зависимостей для Kent AI Assistant
-# Скрипт НЕ устанавливает пакеты, только проверяет их наличие и версии.
+# По умолчанию только проверяет наличие и версии.
+# Флаги:
+#   --install    Автоматически устанавливать недостающие зависимости
+#   --skip-env   Пропустить проверку .env файла
 # ============================================================================
 
 # Цвета для вывода
@@ -18,8 +21,36 @@ PASSED=0
 FAILED=0
 WARNINGS=0
 
+# Режимы работы
+INSTALL_MODE=false
+SKIP_ENV=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --install)   INSTALL_MODE=true ;;
+        --skip-env)  SKIP_ENV=true ;;
+    esac
+done
+
 # Директория скрипта (для поиска .env)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- Функция авто-установки (только в режиме --install) ---
+try_install_apt() {
+    local pkg="$1"
+    local label="${2:-$pkg}"
+    if $INSTALL_MODE; then
+        echo -e "  ${YELLOW}→${NC} Устанавливаем ${label}..."
+        if sudo apt-get install -y "$pkg" &>/dev/null; then
+            pass "${label} установлен"
+            return 0
+        else
+            fail "Не удалось установить ${label}"
+            return 1
+        fi
+    fi
+    return 1
+}
 
 # --- Вспомогательные функции ---
 
@@ -82,9 +113,25 @@ if command -v node &>/dev/null; then
         fi
     else
         fail "Node.js ${NODE_RAW} — требуется >= 22.16 (рекомендуется 24)"
+        if $INSTALL_MODE; then
+            echo -e "  ${YELLOW}→${NC} Устанавливаем Node.js 24 через NodeSource..."
+            if curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - &>/dev/null && sudo apt-get install -y nodejs &>/dev/null; then
+                pass "Node.js $(node --version 2>/dev/null) установлен"
+            else
+                fail "Не удалось установить Node.js 24"
+            fi
+        fi
     fi
 else
     fail "Node.js не найден — требуется >= 22.16 (рекомендуется 24)"
+    if $INSTALL_MODE; then
+        echo -e "  ${YELLOW}→${NC} Устанавливаем Node.js 24 через NodeSource..."
+        if curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash - &>/dev/null && sudo apt-get install -y nodejs &>/dev/null; then
+            pass "Node.js $(node --version 2>/dev/null) установлен"
+        else
+            fail "Не удалось установить Node.js 24"
+        fi
+    fi
 fi
 
 # --- 2. pnpm ---
@@ -93,6 +140,14 @@ if command -v pnpm &>/dev/null; then
     pass "pnpm ${PNPM_VER}"
 else
     fail "pnpm не найден — установите: npm install -g pnpm"
+    if $INSTALL_MODE && command -v npm &>/dev/null; then
+        echo -e "  ${YELLOW}→${NC} Устанавливаем pnpm..."
+        if npm install -g pnpm &>/dev/null; then
+            pass "pnpm $(pnpm --version 2>/dev/null) установлен"
+        else
+            fail "Не удалось установить pnpm"
+        fi
+    fi
 fi
 
 # --- 3. Python 3 + pip3 ---
@@ -101,6 +156,7 @@ if command -v python3 &>/dev/null; then
     pass "${PY_VER}"
 else
     fail "Python 3 не найден"
+    try_install_apt python3 "Python 3"
 fi
 
 if command -v pip3 &>/dev/null; then
@@ -108,6 +164,7 @@ if command -v pip3 &>/dev/null; then
     pass "pip3 — ${PIP_VER}"
 else
     fail "pip3 не найден"
+    try_install_apt python3-pip "pip3"
 fi
 
 echo ""
@@ -119,6 +176,7 @@ if command -v curl &>/dev/null; then
     pass "curl — ${CURL_VER}"
 else
     fail "curl не найден"
+    try_install_apt curl "curl"
 fi
 
 # --- 5. jq ---
@@ -127,6 +185,7 @@ if command -v jq &>/dev/null; then
     pass "jq ${JQ_VER}"
 else
     fail "jq не найден — установите: brew install jq / apt install jq"
+    try_install_apt jq "jq"
 fi
 
 # --- 6. openssl ---
@@ -135,6 +194,7 @@ if command -v openssl &>/dev/null; then
     pass "${OPENSSL_VER}"
 else
     fail "openssl не найден"
+    try_install_apt openssl "openssl"
 fi
 
 # --- 7. rsync ---
@@ -143,6 +203,7 @@ if command -v rsync &>/dev/null; then
     pass "rsync — ${RSYNC_VER}"
 else
     fail "rsync не найден — установите: apt install rsync"
+    try_install_apt rsync "rsync"
 fi
 
 # --- 8. Docker (необязательно) ---
@@ -154,34 +215,40 @@ else
 fi
 
 # --- 8. Файл .env и обязательные переменные ---
-echo ""
-echo -e "${BOLD}▸ Конфигурация (.env)${NC}"
+if ! $SKIP_ENV; then
+    echo ""
+    echo -e "${BOLD}▸ Конфигурация (.env)${NC}"
 
-ENV_FILE="${SCRIPT_DIR}/.env"
-REQUIRED_VARS=(
-    "OPENCLAW_GATEWAY_TOKEN"
-    "TELEGRAM_BOT_TOKEN"
-    "CLIENT_TELEGRAM_ID"
-    "CLIENT_NAME"
-)
+    ENV_FILE="${SCRIPT_DIR}/.env"
+    REQUIRED_VARS=(
+        "OPENCLAW_GATEWAY_TOKEN"
+        "TELEGRAM_BOT_TOKEN"
+        "CLIENT_TELEGRAM_ID"
+        "CLIENT_NAME"
+    )
 
-if [[ -f "$ENV_FILE" ]]; then
-    pass "Файл .env найден: ${ENV_FILE}"
+    if [[ -f "$ENV_FILE" ]]; then
+        pass "Файл .env найден: ${ENV_FILE}"
 
-    # Проверяем каждую обязательную переменную
-    for var in "${REQUIRED_VARS[@]}"; do
-        # Ищем строку вида VAR=значение (не пустое)
-        if grep -qE "^${var}=.+" "$ENV_FILE" 2>/dev/null; then
-            pass "Переменная ${var} задана"
-        else
-            fail "Переменная ${var} отсутствует или пуста в .env"
-        fi
-    done
+        # Проверяем каждую обязательную переменную
+        for var in "${REQUIRED_VARS[@]}"; do
+            # Ищем строку вида VAR=значение (не пустое)
+            if grep -qE "^${var}=.+" "$ENV_FILE" 2>/dev/null; then
+                pass "Переменная ${var} задана"
+            else
+                fail "Переменная ${var} отсутствует или пуста в .env"
+            fi
+        done
+    else
+        fail "Файл .env не найден (ожидается: ${ENV_FILE})"
+        for var in "${REQUIRED_VARS[@]}"; do
+            fail "Переменная ${var} — .env отсутствует"
+        done
+    fi
 else
-    fail "Файл .env не найден (ожидается: ${ENV_FILE})"
-    for var in "${REQUIRED_VARS[@]}"; do
-        fail "Переменная ${var} — .env отсутствует"
-    done
+    echo ""
+    echo -e "${BOLD}▸ Конфигурация (.env)${NC}"
+    echo -e "  ${YELLOW}⚠${NC} Проверка .env пропущена (--skip-env)"
 fi
 
 # --- 9. Системные ресурсы ---

@@ -340,20 +340,232 @@ def _build_title_slide(
 # ---------------------------------------------------------------------------
 
 
+def _build_two_column_slide(
+    prs: Presentation,
+    slide_data: dict[str, Any],
+    tmpl: dict[str, Any],
+) -> None:
+    """Build a two-column slide."""
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _set_slide_background(slide, tmpl["bg_color"])
+    _add_header_bar(slide, tmpl)
+
+    slide_title = slide_data.get("title", "")
+    if slide_title:
+        _add_title_textbox(slide, slide_title, tmpl)
+
+    left_text = slide_data.get("left", "")
+    right_text = slide_data.get("right", "")
+
+    if left_text:
+        _add_body_text(slide, left_text, tmpl, left=0.6, top=1.6, width=5.5, height=5.0)
+    if right_text:
+        _add_body_text(slide, right_text, tmpl, left=6.8, top=1.6, width=5.5, height=5.0)
+
+    # Vertical separator line
+    sep = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        left=Inches(6.5), top=Inches(1.4),
+        width=Pt(2), height=Inches(5.2),
+    )
+    sep.fill.solid()
+    sep.fill.fore_color.rgb = tmpl["accent_color"]
+    sep.line.fill.background()
+
+
+def _build_section_slide(
+    prs: Presentation,
+    slide_data: dict[str, Any],
+    tmpl: dict[str, Any],
+) -> None:
+    """Build a section divider slide."""
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _set_slide_background(slide, tmpl["header_color"])
+
+    title = slide_data.get("title", "")
+    subtitle = slide_data.get("subtitle", "")
+
+    if title:
+        txBox = slide.shapes.add_textbox(
+            Inches(1.0), Inches(2.5), Inches(11.0), Inches(2.0)
+        )
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = tmpl["font_name"]
+        p.font.size = Pt(44)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        p.alignment = PP_ALIGN.CENTER
+
+    if subtitle:
+        txBox2 = slide.shapes.add_textbox(
+            Inches(1.0), Inches(4.8), Inches(11.0), Inches(1.0)
+        )
+        tf2 = txBox2.text_frame
+        tf2.word_wrap = True
+        p2 = tf2.paragraphs[0]
+        p2.text = subtitle
+        p2.font.name = tmpl["font_name"]
+        p2.font.size = tmpl["subtitle_size"]
+        p2.font.color.rgb = RGBColor(0xDD, 0xDD, 0xDD)
+        p2.alignment = PP_ALIGN.CENTER
+
+
+def _build_quote_slide(
+    prs: Presentation,
+    slide_data: dict[str, Any],
+    tmpl: dict[str, Any],
+) -> None:
+    """Build a quote slide."""
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _set_slide_background(slide, tmpl["bg_color"])
+
+    quote = slide_data.get("quote", slide_data.get("title", ""))
+    author = slide_data.get("author", slide_data.get("subtitle", ""))
+
+    # Large opening quote mark
+    q_mark = slide.shapes.add_textbox(
+        Inches(0.8), Inches(1.5), Inches(2.0), Inches(2.0)
+    )
+    tf_q = q_mark.text_frame
+    p_q = tf_q.paragraphs[0]
+    p_q.text = "\u201C"
+    p_q.font.size = Pt(120)
+    p_q.font.color.rgb = tmpl["accent_color"]
+    p_q.font.bold = True
+
+    # Quote text
+    if quote:
+        txBox = slide.shapes.add_textbox(
+            Inches(1.5), Inches(2.5), Inches(10.0), Inches(3.0)
+        )
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = quote
+        p.font.name = tmpl["font_name"]
+        p.font.size = Pt(28)
+        p.font.italic = True
+        p.font.color.rgb = tmpl["text_color"]
+        p.alignment = PP_ALIGN.CENTER
+
+    # Author
+    if author:
+        txBox2 = slide.shapes.add_textbox(
+            Inches(1.5), Inches(5.8), Inches(10.0), Inches(0.8)
+        )
+        tf2 = txBox2.text_frame
+        tf2.word_wrap = True
+        p2 = tf2.paragraphs[0]
+        p2.text = f"\u2014 {author}"
+        p2.font.name = tmpl["font_name"]
+        p2.font.size = tmpl["subtitle_size"]
+        p2.font.color.rgb = tmpl["subtitle_color"]
+        p2.alignment = PP_ALIGN.CENTER
+
+
+def _build_table_slide(
+    prs: Presentation,
+    slide_data: dict[str, Any],
+    tmpl: dict[str, Any],
+) -> None:
+    """Build a slide with a table."""
+    slide_layout = prs.slide_layouts[6]
+    slide = prs.slides.add_slide(slide_layout)
+    _set_slide_background(slide, tmpl["bg_color"])
+    _add_header_bar(slide, tmpl)
+
+    slide_title = slide_data.get("title", "")
+    if slide_title:
+        _add_title_textbox(slide, slide_title, tmpl)
+
+    rows_data = slide_data.get("rows", [])
+    if not rows_data or not isinstance(rows_data, list):
+        return
+
+    num_rows = len(rows_data)
+    num_cols = max(len(r) for r in rows_data) if rows_data else 1
+
+    table_shape = slide.shapes.add_table(
+        num_rows, num_cols,
+        Inches(0.6), Inches(1.6),
+        Inches(12.0), Inches(min(num_rows * 0.6, 5.5)),
+    )
+    table = table_shape.table
+
+    for r_idx, row in enumerate(rows_data):
+        for c_idx, cell_text in enumerate(row):
+            if c_idx < num_cols:
+                cell = table.cell(r_idx, c_idx)
+                cell.text = str(cell_text)
+                for paragraph in cell.text_frame.paragraphs:
+                    paragraph.font.name = tmpl["font_name"]
+                    paragraph.font.size = tmpl["bullet_size"]
+                    paragraph.font.color.rgb = tmpl["text_color"]
+                    if r_idx == 0:
+                        paragraph.font.bold = True
+                        paragraph.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+
+    # Style header row
+    for c_idx in range(num_cols):
+        cell = table.cell(0, c_idx)
+        cell_fill = cell.fill
+        cell_fill.solid()
+        cell_fill.fore_color.rgb = tmpl["header_color"]
+
+
 def _build_content_slide(
     prs: Presentation,
     slide_data: dict[str, Any],
     tmpl: dict[str, Any],
 ) -> None:
-    """Build a single content slide from a slide data dict."""
+    """Build a single content slide from a slide data dict.
+    Dispatches to specialized builders based on 'layout' field.
+    """
+    layout = slide_data.get("layout", "content")
+
+    # Dispatch to specialized layout builders
+    if layout == "title":
+        _build_title_slide(
+            prs,
+            slide_data.get("title", ""),
+            slide_data.get("subtitle"),
+            tmpl,
+        )
+        return
+    if layout == "two_column":
+        _build_two_column_slide(prs, slide_data, tmpl)
+        return
+    if layout == "section":
+        _build_section_slide(prs, slide_data, tmpl)
+        return
+    if layout == "quote":
+        _build_quote_slide(prs, slide_data, tmpl)
+        return
+    if layout == "table":
+        _build_table_slide(prs, slide_data, tmpl)
+        return
+    if layout == "blank":
+        sl = prs.slides.add_slide(prs.slide_layouts[6])
+        _set_slide_background(sl, tmpl["bg_color"])
+        return
+
+    # Default: content / image / image_text / chart_placeholder
     slide_layout = prs.slide_layouts[6]  # blank
     slide = prs.slides.add_slide(slide_layout)
     _set_slide_background(slide, tmpl["bg_color"])
 
     slide_title = slide_data.get("title", "")
-    content = slide_data.get("content", "")
+    # Accept both "content" and "body" field names for compatibility
+    content = slide_data.get("content", "") or slide_data.get("body", "")
     bullets = slide_data.get("bullets", [])
     image = slide_data.get("image")
+    caption = slide_data.get("caption", "")
 
     # Header bar
     _add_header_bar(slide, tmpl)
@@ -392,6 +604,13 @@ def _build_content_slide(
     # Image
     if has_image:
         _add_image_to_slide(slide, image)
+
+    # Caption (for image/image_text layouts)
+    if caption:
+        _add_body_text(
+            slide, caption, tmpl,
+            left=0.6, top=6.5, width=12.0, height=0.8,
+        )
 
 
 # ---------------------------------------------------------------------------

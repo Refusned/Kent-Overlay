@@ -176,6 +176,11 @@
         "code":      { "description": "Помощь с кодом и скриптами" },
         "crm":       { "description": "Управление клиентской базой" },
         "broadcast": { "description": "Массовая рассылка сообщений" },
+        "mail":      { "description": "Проверить почту и дайджест" },
+        "doc":       { "description": "Создать документ (счёт, договор, акт)" },
+        "finance":   { "description": "Финансы: доходы, расходы, отчёт" },
+        "humanize":  { "description": "Очеловечить AI-текст" },
+        "recipes":   { "description": "Каталог готовых рецептов КентБайтс" },
         "settings":  { "description": "Настройки бота" },
         "feedback":  { "description": "Оставить отзыв или предложение" },
         "status":    { "description": "Текущий статус системы" }
@@ -196,13 +201,14 @@
   // ── Навыки (skills) ──────────────────────────────────────────
   "skills": {
     "allowBundled": [                     // разрешённые встроенные навыки
-      "gog",
-      "github",
-      "healthcheck",
-      "weather",
-      "summarize",
-      "clawhub",
-      "session-logs"
+      "gog",                              // Google Workspace (Gmail, Calendar, Drive, Sheets)
+      "github",                           // GitHub управление
+      "healthcheck",                      // мониторинг системы
+      "weather",                          // погода
+      "summarize",                        // суммаризация текстов
+      "clawhub",                          // поиск скиллов
+      "agent-browser",                    // browser automation для мониторинга и автоматизации
+      "session-logs"                      // логирование сессий
     ],
     "install": {
       "nodeManager": "pnpm"              // менеджер пакетов для установки навыков
