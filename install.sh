@@ -273,6 +273,7 @@ SYSTEM_PACKAGES=(
     python3-venv
     ca-certificates
     gnupg
+    ffmpeg
 )
 
 info "Пакеты: ${SYSTEM_PACKAGES[*]}"

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -92,7 +93,7 @@ def parse_transcript_payload(text: str) -> str:
 
 
 def transcript_via_ytdlp(url: str) -> str:
-    ytdlp = str(Path.home() / '.local' / 'bin' / 'yt-dlp')
+    ytdlp = shutil.which('yt-dlp') or str(Path.home() / '.local' / 'bin' / 'yt-dlp')
     with tempfile.TemporaryDirectory() as tmp:
         outtmpl = str(Path(tmp) / 'cap')
         cmd = [

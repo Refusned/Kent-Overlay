@@ -92,6 +92,8 @@
     "enabled": true,
     "path": "/hooks",
     "token": "${OPENCLAW_HOOKS_TOKEN}",
+    "defaultSessionKey": "hook:ingress",
+    "allowedAgentIds": ["hooks", "main"],
     "internal": {
       "enabled": true,
       "entries": {

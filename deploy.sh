@@ -173,6 +173,7 @@ PYTHON_DEPS=(
     openpyxl
     pandas
     yt-dlp
+    reportlab
 )
 
 info "Пакеты: ${PYTHON_DEPS[*]}"
@@ -210,7 +211,7 @@ fi
 step "Создание структуры директорий"
 
 mkdir -p "${OPENCLAW_HOME}"/{workspace,credentials,logs,cron}
-mkdir -p "${OPENCLAW_HOME}/workspace"/{memory/groups,smm/{posts,analytics,brands},content/drafts,scripts,self-improvement,leads,faq,crm/contacts,broadcasts,smarthome,feedback,tools}
+mkdir -p "${OPENCLAW_HOME}/workspace"/{memory/groups,smm/{posts,analytics,brands},content/drafts,scripts,self-improvement,leads,faq,crm/contacts,broadcasts,smarthome,feedback,tools,documents,summaries,finance}
 
 ok "Структура директорий создана в ${OPENCLAW_HOME}"
 
