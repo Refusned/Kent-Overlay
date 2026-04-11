@@ -165,7 +165,6 @@ PYTHON_DEPS=(
     openpyxl
     pandas
     yt-dlp
-    summarizely
 )
 
 info "Пакеты: ${PYTHON_DEPS[*]}"
