@@ -221,7 +221,7 @@ PIP_PACKAGES=(
 )
 
 if command -v pip3 &>/dev/null; then
-  pip3 install --upgrade "${PIP_PACKAGES[@]}"
+  pip3 install --break-system-packages --upgrade "${PIP_PACKAGES[@]}"
   log "Python-зависимости обновлены"
 else
   warn "pip3 не найден — пропускаем обновление Python-зависимостей"

@@ -170,7 +170,7 @@ PYTHON_DEPS=(
 
 info "Пакеты: ${PYTHON_DEPS[*]}"
 
-if pip3 install "${PYTHON_DEPS[@]}"; then
+if pip3 install --break-system-packages "${PYTHON_DEPS[@]}"; then
     ok "Python-зависимости установлены"
 else
     die "Не удалось установить Python-зависимости"
