@@ -57,19 +57,19 @@ try_install_apt() {
 # Успешная проверка
 pass() {
     echo -e "  ${GREEN}✔${NC} $1"
-    ((PASSED++))
+    PASSED=$((PASSED + 1))
 }
 
 # Провалена обязательная проверка
 fail() {
     echo -e "  ${RED}✘${NC} $1"
-    ((FAILED++))
+    FAILED=$((FAILED + 1))
 }
 
 # Предупреждение (необязательная зависимость)
 warn() {
     echo -e "  ${YELLOW}⚠${NC} $1"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
 }
 
 # Сравнение версий: возвращает 0, если $1 >= $2

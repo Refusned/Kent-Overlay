@@ -22,7 +22,7 @@ CURRENT_STEP=0
 # --- Вспомогательные функции ---
 
 step() {
-    ((CURRENT_STEP++))
+    CURRENT_STEP=$((CURRENT_STEP + 1))
     echo ""
     echo -e "${CYAN}${BOLD}[${CURRENT_STEP}/${TOTAL_STEPS}]${NC} ${BOLD}$1${NC}"
 }
@@ -339,7 +339,7 @@ if [[ -d "$SKILLS_SRC" ]]; then
         if [[ -d "$skill_dir" ]]; then
             skill_name="$(basename "$skill_dir")"
             cp -r "$skill_dir" "${SKILLS_DST}/${skill_name}"
-            ((SKILL_COUNT++))
+            SKILL_COUNT=$((SKILL_COUNT + 1))
         fi
     done
     ok "Локальные навыки скопированы: ${SKILL_COUNT} шт."
@@ -385,10 +385,10 @@ SKILLS_FAILED=0
 for skill in "${CLAWHUB_SKILLS[@]}"; do
     if openclaw skills install "$skill" 2>/dev/null; then
         ok "Навык установлен: ${skill}"
-        ((SKILLS_INSTALLED++))
+        SKILLS_INSTALLED=$((SKILLS_INSTALLED + 1))
     else
         warn "Не удалось установить навык: ${skill} — продолжаем"
-        ((SKILLS_FAILED++))
+        SKILLS_FAILED=$((SKILLS_FAILED + 1))
     fi
 done
 

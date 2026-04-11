@@ -15,9 +15,9 @@ set -euo pipefail
 # ============================================================================
 
 # --- Перенаправление stdin для curl|bash ---
-# /dev/tty может не существовать при неинтерактивном SSH
-if [ ! -t 0 ] && [ -e /dev/tty ]; then
-    exec < /dev/tty
+# /dev/tty может быть недоступен при неинтерактивном SSH
+if [ ! -t 0 ]; then
+    exec < /dev/tty 2>/dev/null || true
 fi
 
 # --- Константы ---
@@ -45,7 +45,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 # --- Вспомогательные функции ---
 step() {
-    ((CURRENT_STEP++))
+    CURRENT_STEP=$((CURRENT_STEP + 1))
     echo ""
     echo -e "${CYAN}${BOLD}[${CURRENT_STEP}/${TOTAL_STEPS}]${NC} ${BOLD}$1${NC}"
 }
