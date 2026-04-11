@@ -1,6 +1,13 @@
 ---
 name: weather-fallback
+emoji: "⛅"
 description: Use wttr.in JSON fallback via web_fetch when the normal weather skill or short weather endpoint is unavailable. Returns current conditions concisely and avoids claiming unavailable data.
+triggers:
+  - погода
+  - weather
+  - прогноз
+  - какая погода
+  - температура на улице
 ---
 
 # Weather Fallback Skill

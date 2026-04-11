@@ -118,7 +118,7 @@ cd ~/kent-overlay
 ### Расположение
 
 ```
-kent-overlay/config/SOUL.md
+kent-overlay/workspace/SOUL.md
 ```
 
 ### Структура файла
@@ -406,7 +406,7 @@ sudo systemctl restart kent-gateway
 
 ```bash
 # Отредактируйте нужные файлы
-nano ~/kent-overlay/config/SOUL.md
+nano ~/kent-overlay/workspace/SOUL.md
 nano ~/kent-overlay/.env
 
 # Перезапустите gateway

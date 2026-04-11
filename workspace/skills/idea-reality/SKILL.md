@@ -1,6 +1,15 @@
 ---
 name: idea-reality
+emoji: "💡"
 description: Check whether a startup, app, SaaS, agent, tool, or product idea already exists and how crowded the space is. Use when evaluating a new project idea before building, comparing idea competition, checking market saturation, or deciding whether to build, pivot, niche down, or kill an idea.
+triggers:
+  - проверь идею
+  - есть идея
+  - аналоги
+  - кто-то уже делает
+  - идея для бизнеса
+  - конкуренты идеи
+storage: workspace/ideas/
 ---
 
 # Idea Reality

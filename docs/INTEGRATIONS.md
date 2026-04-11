@@ -633,27 +633,27 @@ CODER_DEFAULT_LANGUAGE=python
 
 ## Полный список интеграций
 
-| # | Интеграция | Категория | Внешний API | Стоимость |
-|---|-----------|-----------|-------------|-----------|
-| 1 | Telegram | Core | Telegram Bot API | Бесплатно |
-| 2 | Codex | Core | Codex API | Подписка |
-| 3 | ChatGPT | Core | OpenAI | Подписка |
-| 4 | Gmail | Google | Gmail API | Бесплатно |
-| 5 | Google Calendar | Google | Calendar API | Бесплатно |
-| 6 | Google Drive | Google | Drive API | Бесплатно |
-| 7 | Twitter/X | Social | Twitter API | Free tier |
-| 8 | Instagram | Social | -- (ручной) | Бесплатно |
-| 9 | VK | Social | -- (ручной) | Бесплатно |
-| 10 | LinkedIn | Social | -- (ручной) | Бесплатно |
-| 11 | ElevenLabs TTS | Media | ElevenLabs API | Free / от $5 |
-| 12 | faster-whisper STT | Media | Локально | Бесплатно |
-| 13 | Image Generation | Media | ChatGPT | Подписка |
-| 14 | PPTX | Media | Локально | Бесплатно |
-| 15 | Yandex Alice | Smart Home | Yandex IoT API | Бесплатно |
-| 16 | Tavily Search | Search | Tavily API | Free / от $0 |
-| 17 | Agent Browser | Search | Встроен | Бесплатно |
-| 18 | GitHub | Dev | GitHub API | Бесплатно |
-| 19 | Coder | Dev | Codex | Подписка |
+| # | Интеграция | Категория | Внешний API | Стоимость | Статус |
+|---|-----------|-----------|-------------|-----------|--------|
+| 1 | Telegram | Core | Telegram Bot API | Бесплатно | Реализовано |
+| 2 | Codex | Core | Codex API | Подписка | Реализовано |
+| 3 | ChatGPT | Core | OpenAI | Подписка | Реализовано |
+| 4 | Gmail | Google | Gmail API | Бесплатно | Реализовано |
+| 5 | Google Calendar | Google | Calendar API | Бесплатно | Реализовано |
+| 6 | Google Drive | Google | Drive API | Бесплатно | Реализовано |
+| 7 | Twitter/X | Social | Twitter API | Free tier | Реализовано |
+| 8 | Instagram | Social | -- (ручной) | Бесплатно | Реализовано |
+| 9 | VK | Social | -- (ручной) | Бесплатно | Реализовано |
+| 10 | LinkedIn | Social | -- (ручной) | Бесплатно | Реализовано |
+| 11 | ElevenLabs TTS | Media | ElevenLabs API | Free / от $5 | Реализовано |
+| 12 | faster-whisper STT | Media | Локально | Бесплатно | Реализовано |
+| 13 | Image Generation | Media | ChatGPT | Подписка | Реализовано |
+| 14 | PPTX | Media | Локально | Бесплатно | Реализовано |
+| 15 | Yandex Alice | Smart Home | Yandex IoT API | Бесплатно | Реализовано |
+| 16 | Tavily Search | Search | Tavily API | Free / от $0 | Опционально |
+| 17 | Agent Browser | Search | Встроен | Бесплатно | Реализовано |
+| 18 | GitHub | Dev | GitHub API | Бесплатно | Реализовано |
+| 19 | Coder | Dev | Codex | Подписка | Реализовано |
 
 > **Примечание:** Интеграции 20-26 являются суб-навыками основных интеграций (отправка email, создание событий, загрузка файлов, чтение ленты, генерация хештегов, резюмирование страниц, парсинг PDF) и настраиваются автоматически при включении родительской интеграции.
 
