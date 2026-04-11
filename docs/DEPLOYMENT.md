@@ -444,6 +444,16 @@ chmod +x configure.sh deploy.sh
 На локальной машине:
 
 ```bash
-ssh -L 18789:localhost:18789 kent@YOUR_SERVER_IP
+# SSH-туннель для Control UI + Codex OAuth callback
+ssh -L 18789:localhost:18789 -L 1455:localhost:1455 kent@YOUR_SERVER_IP
+
+# На сервере: авторизация Codex (модели через подписку ChatGPT)
+codex login
+# Откройте появившуюся ссылку в локальном браузере и авторизуйтесь
+
 # Откройте http://localhost:18789 и сопрягите бота
 ```
+
+> **Важно:** Команда `openclaw codex auth` и `--auth-choice codex-cli` устарели.
+> Используйте `codex login` (из пакета `@openai/codex`, устанавливается автоматически).
+> Для VPS требуется SSH-туннель порта 1455 для OAuth callback.

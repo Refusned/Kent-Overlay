@@ -151,6 +151,14 @@ fi
 INSTALLED_VERSION="$(openclaw --version 2>/dev/null || echo 'неизвестно')"
 ok "OpenClaw установлен: ${INSTALLED_VERSION}"
 
+# --- Codex CLI (для OAuth-авторизации через подписку ChatGPT Plus/Pro) ---
+info "Установка Codex CLI (@openai/codex)..."
+if pnpm add -g @openai/codex 2>/dev/null; then
+    ok "Codex CLI $(codex --version 2>/dev/null || echo '') установлен"
+else
+    warn "Не удалось установить Codex CLI — можно установить позже: pnpm add -g @openai/codex"
+fi
+
 # ============================================================================
 # [5/20] Установка Python-зависимостей
 # ============================================================================
@@ -415,10 +423,28 @@ ok "chmod 600 openclaw.json"
 # ============================================================================
 step "Онбординг OpenClaw (install-daemon)"
 
-if openclaw onboard --install-daemon --non-interactive --accept-risk --auth-choice codex-cli; then
+# Онбординг без auth-choice (авторизация через Codex CLI отдельно)
+if openclaw onboard --install-daemon --non-interactive --accept-risk --skip-channels --skip-skills 2>/dev/null; then
     ok "Онбординг завершён, демон установлен"
 else
     warn "openclaw onboard завершился с ошибкой — продолжаем (можно повторить позже)"
+fi
+
+# --- Установка модели по умолчанию ---
+info "Установка модели openai-codex/gpt-5.4..."
+if openclaw models set openai-codex/gpt-5.4 2>/dev/null; then
+    ok "Модель установлена: openai-codex/gpt-5.4"
+else
+    warn "Не удалось установить модель — установите вручную: openclaw models set openai-codex/gpt-5.4"
+fi
+
+# --- Генерация отдельного hooks.token ---
+if [[ -z "${OPENCLAW_HOOKS_TOKEN:-}" ]]; then
+    GENERATED_HOOKS_TOKEN="$(openssl rand -hex 16)"
+    echo "OPENCLAW_HOOKS_TOKEN=${GENERATED_HOOKS_TOKEN}" >> "${OPENCLAW_HOME}/.env"
+    # Перезагрузить .env
+    export OPENCLAW_HOOKS_TOKEN="${GENERATED_HOOKS_TOKEN}"
+    ok "OPENCLAW_HOOKS_TOKEN сгенерирован и добавлен в .env"
 fi
 
 # ============================================================================

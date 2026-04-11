@@ -73,19 +73,17 @@
   },
 
   // ── Профили авторизации ──────────────────────────────────────
+  // Авторизация через Codex CLI (codex login), токен хранится в ~/.codex/auth.json
+  // OpenClaw автоматически подхватывает его как провайдер openai-codex
   "auth": {
     "profiles": {
-      "codex:default": {
-        "provider": "codex",
-        "mode": "oauth"
-      },
-      "chatgpt:default": {
-        "provider": "openai",
+      "openai-codex:default": {
+        "provider": "openai-codex",
         "mode": "oauth"
       }
     },
     "order": {
-      "codex": ["codex:default"]
+      "openai-codex": ["openai-codex:default"]
     }
   },
 
@@ -93,7 +91,19 @@
   "hooks": {
     "enabled": true,
     "path": "/hooks",
-    "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    "token": "${OPENCLAW_HOOKS_TOKEN}",
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": { "enabled": true },
+        "bootstrap-extra-files": {
+          "enabled": true,
+          "patterns": ["SOUL.md", "SECURITY.md", "AGENTS.md", "IDENTITY.md"]
+        },
+        "command-logger": { "enabled": true },
+        "session-memory": { "enabled": true }
+      }
+    }
   },
 
   // ── Канал Telegram ───────────────────────────────────────────

@@ -219,31 +219,35 @@ CONFIG[CLIENT_TELEGRAM_ID]="$CONFIG_CLIENT_TELEGRAM_ID"
 # ============================================================================
 section "OpenClaw Gateway"
 
-echo -e "  Генерация токена шлюза..."
+echo -e "  Генерация токенов шлюза..."
 CONFIG_OPENCLAW_GATEWAY_TOKEN="$(openssl rand -hex 32)"
+CONFIG_OPENCLAW_HOOKS_TOKEN="$(openssl rand -hex 16)"
 ok "OPENCLAW_GATEWAY_TOKEN сгенерирован."
+ok "OPENCLAW_HOOKS_TOKEN сгенерирован (отдельный от gateway)."
 CONFIG[OPENCLAW_GATEWAY_TOKEN]="$CONFIG_OPENCLAW_GATEWAY_TOKEN"
+CONFIG[OPENCLAW_HOOKS_TOKEN]="$CONFIG_OPENCLAW_HOOKS_TOKEN"
 
 # ============================================================================
 # Шаг 4: Авторизация OpenClaw Codex (OAuth для моделей)
 # ============================================================================
-section "Авторизация в OpenClaw Codex"
+section "Авторизация Codex (модели через подписку ChatGPT Plus/Pro)"
 
-echo -e "  Сейчас откроется OAuth-авторизация для доступа к моделям."
-hint "Для headless-серверов: скопируйте URL и откройте в браузере на другом устройстве."
+echo -e "  OAuth-авторизация для доступа к моделям через подписку ChatGPT."
+hint "Для headless/VPS: codex login покажет URL — откройте его в браузере на локальной машине."
+hint "Не забудьте SSH-туннель: ssh -L 1455:localhost:1455 user@server"
 echo ""
 
-if command -v openclaw &>/dev/null; then
-    if ask_yesno "Запустить openclaw codex auth сейчас?"; then
+if command -v codex &>/dev/null; then
+    if ask_yesno "Запустить codex login сейчас?"; then
         echo ""
-        openclaw codex auth || {
-            warning "openclaw codex auth завершился с ошибкой. Можно повторить позже."
+        codex login || {
+            warning "codex login завершился с ошибкой. Можно повторить позже: codex login"
         }
     else
-        warning "Пропущено. Выполните вручную: openclaw codex auth"
+        warning "Пропущено. Выполните вручную: codex login"
     fi
 else
-    warning "Команда openclaw не найдена. Установите OpenClaw и выполните: openclaw codex auth"
+    warning "Codex CLI не найден. Установите: pnpm add -g @openai/codex && codex login"
 fi
 
 # ============================================================================
@@ -393,6 +397,7 @@ echo ""
     echo ""
     echo "# --- OpenClaw ---"
     echo "OPENCLAW_GATEWAY_TOKEN=\"${CONFIG[OPENCLAW_GATEWAY_TOKEN]}\""
+    echo "OPENCLAW_HOOKS_TOKEN=\"${CONFIG[OPENCLAW_HOOKS_TOKEN]}\""
     echo ""
     echo "# --- Оператор ---"
     echo "OPERATOR_TELEGRAM_BOT_TOKEN=\"${CONFIG[OPERATOR_TELEGRAM_BOT_TOKEN]}\""
