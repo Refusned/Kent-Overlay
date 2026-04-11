@@ -19,3 +19,13 @@
 ## Память
 - Daily notes: один файл в день, append-only
 - При compaction: сохранять ключевые факты в MEMORY.md
+
+## Git и GitHub
+- Репозиторий: https://github.com/Refusned/Kent (private)
+- Для сохранения изменений в GitHub используй скрипт:
+  ```bash
+  bash ~/.openclaw/workspace/scripts/git-sync.sh "описание изменений"
+  ```
+- Когда изменяешь файлы workspace (SOUL.md, AGENTS.md, skills/, tools/) — 
+  после значимых изменений предложи клиенту запушить в GitHub
+- Формат сообщения коммита: краткое описание на русском
