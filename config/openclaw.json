@@ -127,7 +127,8 @@
       "ackReaction": "\ud83d\udc54",
       "groups": {
         "*": {
-          "requireMention": true
+          "requireMention": true,
+          "allowFrom": ["520795636"]
         },
         "${GROUP_1_ID}": {
           "enabled": true
