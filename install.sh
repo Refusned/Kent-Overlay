@@ -313,6 +313,15 @@ else
     ok "pnpm $(pnpm --version 2>/dev/null) установлен"
 fi
 
+# --- Настройка глобальной директории pnpm ---
+if ! pnpm config get global-bin-dir &>/dev/null || [[ "$(pnpm config get global-bin-dir 2>/dev/null)" == "undefined" ]]; then
+    info "Настройка pnpm global bin directory..."
+    pnpm setup 2>/dev/null || true
+    export PNPM_HOME="${HOME}/.local/share/pnpm"
+    export PATH="${PNPM_HOME}:${PATH}"
+    ok "PNPM_HOME настроен: ${PNPM_HOME}"
+fi
+
 # ============================================================================
 # [3/7] Проверка зависимостей
 # ============================================================================
