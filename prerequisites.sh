@@ -160,7 +160,7 @@ else
 fi
 
 if command -v pip3 &>/dev/null; then
-    PIP_VER="$(pip3 --version 2>/dev/null | head -1)"
+    PIP_VER="$(pip3 --version 2>/dev/null | head -1 || true)"
     pass "pip3 — ${PIP_VER}"
 else
     fail "pip3 не найден"
@@ -172,7 +172,7 @@ echo -e "${BOLD}▸ Утилиты${NC}"
 
 # --- 4. curl ---
 if command -v curl &>/dev/null; then
-    CURL_VER="$(curl --version 2>/dev/null | head -1)"
+    CURL_VER="$(curl --version 2>/dev/null | head -1 || true)"
     pass "curl — ${CURL_VER}"
 else
     fail "curl не найден"
@@ -199,7 +199,7 @@ fi
 
 # --- 7. rsync ---
 if command -v rsync &>/dev/null; then
-    RSYNC_VER="$(rsync --version 2>/dev/null | head -1)"
+    RSYNC_VER="$(rsync --version 2>/dev/null | head -1 || true)"
     pass "rsync — ${RSYNC_VER}"
 else
     fail "rsync не найден — установите: apt install rsync"

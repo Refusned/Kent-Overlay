@@ -392,6 +392,11 @@ fi
 INSTALL_PHASE="deploy"
 step "Развёртывание Kent (deploy.sh)"
 
+# Проверка: .env должен существовать перед deploy.sh
+if [[ ! -f "${KENT_INSTALL_DIR}/.env" && ! -f "${HOME}/.openclaw/.env" ]]; then
+    die "Файл .env не найден. Запустите configure.sh или создайте .env вручную из .env.example"
+fi
+
 echo ""
 echo -e "  ${DIM}Запуск полного развёртывания (20 шагов)...${NC}"
 echo ""
