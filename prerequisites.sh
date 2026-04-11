@@ -273,9 +273,9 @@ if (( TOTAL_RAM_GB >= MIN_RAM_GB )); then
     pass "Оперативная память: ${TOTAL_RAM_GB} ГБ (минимум ${MIN_RAM_GB} ГБ)"
 else
     if (( TOTAL_RAM_GB == 0 )); then
-        fail "Не удалось определить объём оперативной памяти (минимум ${MIN_RAM_GB} ГБ)"
+        warn "Не удалось определить объём оперативной памяти (рекомендуется ${MIN_RAM_GB} ГБ)"
     else
-        fail "Оперативная память: ${TOTAL_RAM_GB} ГБ — требуется минимум ${MIN_RAM_GB} ГБ"
+        warn "Оперативная память: ${TOTAL_RAM_GB} ГБ — рекомендуется минимум ${MIN_RAM_GB} ГБ"
     fi
 fi
 
