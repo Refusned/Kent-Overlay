@@ -29,7 +29,7 @@
 
 | Скилл | Строк | Команда | Ext deps | Env | Known issues |
 |-------|-------|---------|----------|-----|-------------|
-| humanize | 128 | /humanize | Нет | Нет | — |
+| humanize | 405 | /humanize | Нет | Нет | v2: личность Кента, 6 режимов, 75+ AI-маркеров, шкала теплоты |
 | faq-responder | 214 | /faq | Нет | Нет | — |
 | crm-notes | 262 | /crm | Нет | Нет | — |
 | coder | 280 | /code | Docker sandbox | Нет | sandbox=off в конфиге по умолчанию |
