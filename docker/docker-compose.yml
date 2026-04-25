@@ -106,6 +106,17 @@ services:
       - KENT_DB_NAME=kent
       # OpenAI API для embeddings (опционально — без него работает mock embedding)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # YandexGPT — Yandex Cloud Foundation Models
+      - YANDEX_API_KEY=${YANDEX_API_KEY:-}
+      - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID:-}
+      - YANDEX_MODEL=${YANDEX_MODEL:-yandexgpt-lite}
+      # GigaChat от Сбера
+      - GIGACHAT_AUTH_KEY=${GIGACHAT_AUTH_KEY:-}
+      - GIGACHAT_CLIENT_ID=${GIGACHAT_CLIENT_ID:-}
+      - GIGACHAT_CLIENT_SECRET=${GIGACHAT_CLIENT_SECRET:-}
+      - GIGACHAT_SCOPE=${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+      - GIGACHAT_MODEL=${GIGACHAT_MODEL:-GigaChat}
     mem_limit: 256m         # FastAPI лёгкий — 256MB хватает с запасом
     cap_drop:
       - ALL

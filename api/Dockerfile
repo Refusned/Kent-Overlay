@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код приложения
-COPY main.py langchain_module.py ./
+COPY main.py langchain_module.py russian_llm.py ./
 
 # Метаданные
 LABEL org.opencontainers.image.title="Kent AI API"

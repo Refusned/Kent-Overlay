@@ -306,6 +306,36 @@ class LangGraphWorkflowResponse(BaseModel):
     used_rag: bool = Field(..., description="Был ли использован RAG для ответа")
 
 
+# ─── Multi-provider LLM schemas ─────────────────────────────────
+
+class UnifiedChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=10000)
+    system: Optional[str] = Field(None, max_length=5000,
+                                  description="System prompt (опционально)")
+    provider: str = Field("openai",
+                          description="LLM провайдер: openai / anthropic / yandex / gigachat")
+
+
+class UnifiedChatResponse(BaseModel):
+    text: str = Field(..., description="Ответ от LLM")
+    provider: str
+    model: str
+    is_mock: bool = Field(..., description="Был ли использован mock fallback")
+
+
+class ProviderInfo(BaseModel):
+    name: str
+    model: str
+    configured: bool
+    country: str
+    status: str
+
+
+class ProvidersListResponse(BaseModel):
+    count: int
+    providers: list[ProviderInfo]
+
+
 # ═══════════════════════════════════════════════════════════════
 #  Каталог интеграций
 # ═══════════════════════════════════════════════════════════════
@@ -1251,6 +1281,91 @@ async def langgraph_workflow(request: Request, payload: LangGraphWorkflowRequest
     _require_langchain()
     final_state = await _lc_run_workflow(payload.user_input)
     return LangGraphWorkflowResponse(**final_state)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Endpoints — Multi-provider LLM (OpenAI / Anthropic / YandexGPT / GigaChat)
+# ═══════════════════════════════════════════════════════════════
+
+try:
+    from russian_llm import (  # noqa: E402
+        get_provider as _get_llm_provider,
+        list_providers as _list_llm_providers,
+    )
+    _LLM_PROVIDERS_AVAILABLE = True
+except ImportError as exc:
+    _LLM_PROVIDERS_AVAILABLE = False
+    _LLM_PROVIDERS_IMPORT_ERROR = str(exc)
+
+
+def _require_llm_providers() -> None:
+    if not _LLM_PROVIDERS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail=f"LLM providers недоступны: {_LLM_PROVIDERS_IMPORT_ERROR}",
+        )
+
+
+@app.get("/llm/providers", response_model=ProvidersListResponse, tags=["llm"],
+         dependencies=[Depends(verify_token)],
+         summary="Список доступных LLM-провайдеров")
+@limiter.limit("60/minute")
+async def llm_providers(request: Request) -> ProvidersListResponse:
+    """
+    Список всех LLM-провайдеров с их статусом конфигурации.
+
+    Показывает: какие настроены реально (есть API key), какие в mock-режиме.
+    Демонстрирует Provider pattern — единый интерфейс, 4 реализации.
+    """
+    _require_llm_providers()
+    providers = _list_llm_providers()
+    return ProvidersListResponse(
+        count=len(providers),
+        providers=[ProviderInfo(**p) for p in providers],
+    )
+
+
+@app.post("/llm/chat", response_model=UnifiedChatResponse, tags=["llm"],
+          dependencies=[Depends(verify_token)],
+          summary="Унифицированный chat с любым LLM-провайдером")
+@limiter.limit("20/minute")
+async def llm_chat(request: Request, payload: UnifiedChatRequest) -> UnifiedChatResponse:
+    """
+    Единый интерфейс для всех LLM:
+
+    - `provider=openai` → OpenAI GPT-4o-mini
+    - `provider=anthropic` → Anthropic Claude (Haiku)
+    - `provider=yandex` → YandexGPT (через Yandex Cloud Foundation Models)
+    - `provider=gigachat` → GigaChat от Сбера (с OAuth2)
+
+    Без API ключей провайдер работает в mock-режиме. В production задавай
+    соответствующие env переменные:
+
+    - YANDEX_API_KEY + YANDEX_FOLDER_ID
+    - GIGACHAT_AUTH_KEY (или CLIENT_ID + CLIENT_SECRET)
+    - OPENAI_API_KEY
+    - ANTHROPIC_API_KEY
+    """
+    _require_llm_providers()
+    try:
+        provider = _get_llm_provider(payload.provider)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    try:
+        response = await provider.chat(payload.message, system=payload.system)
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Provider '{payload.provider}' недоступен: {type(exc).__name__}: {exc}",
+        )
+
+    return UnifiedChatResponse(
+        text=response.text,
+        provider=response.provider,
+        model=response.model,
+        is_mock=response.is_mock,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

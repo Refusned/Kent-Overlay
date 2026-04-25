@@ -43,7 +43,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Refusned/Kent-Overlay/main/i
 | **Автоматизация** | 5 cron-задач: утренний брифинг, health-check, отчёт, SMM, бэкап |
 | **Рецепты** | 31 KentBytes в 6 категориях (бухгалтеры, предприниматели, фрилансеры, юристы, SMM, студенты) |
 | **API Gateway** | FastAPI на порту 8000: 17+ REST endpoints + WebSocket, Swagger UI на `/docs`, Bearer auth, rate limiting |
-| **RAG Memory** | PostgreSQL + pgvector для semantic search: `POST /memory/store`, `GET /memory/search`, OpenAI embeddings (с fallback на mock) |
+| **RAG Memory** | PostgreSQL + pgvector для semantic search (vanilla psycopg + LangChain PGVector). LangChain LCEL chains, LangGraph workflow с conditional routing |
+| **Multi-LLM** | Унифицированный интерфейс для 4 провайдеров: OpenAI, Anthropic, YandexGPT, GigaChat (`POST /llm/chat?provider=...`) |
 
 ## Требования
 
