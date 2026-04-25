@@ -64,6 +64,10 @@ services:
       - KENT_CONFIG_PATH=/data/config
       - KENT_OPENCLAW_BASE_URL=http://openclaw:18789
       - KENT_BUILD_DATE=2026-04-25
+      # Bearer token для защиты endpoints. Если пустой — auth выключена (dev mode).
+      # В prod задавай: KENT_API_TOKEN=<длинный-случайный-токен> docker compose up
+      - KENT_API_TOKEN=${KENT_API_TOKEN:-}
+      - KENT_CORS_ORIGINS=${KENT_CORS_ORIGINS:-*}
     mem_limit: 256m         # FastAPI лёгкий — 256MB хватает с запасом
     cap_drop:
       - ALL
