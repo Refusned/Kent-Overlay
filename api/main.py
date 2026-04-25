@@ -25,13 +25,16 @@ WebSocket события:              WS  /ws/events
 """
 
 import asyncio
+import hashlib
 import json
 import os
+import random
 import re
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 import httpx
 from fastapi import (
@@ -46,6 +49,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pgvector.psycopg import register_vector_async
+from psycopg_pool import AsyncConnectionPool
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -75,6 +80,22 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 START_TIME = time.time()
+
+# PostgreSQL для RAG memory storage
+KENT_DB_HOST = os.environ.get("KENT_DB_HOST", "postgres")
+KENT_DB_PORT = os.environ.get("KENT_DB_PORT", "5432")
+KENT_DB_USER = os.environ.get("KENT_DB_USER", "kent")
+KENT_DB_PASSWORD = os.environ.get("KENT_DB_PASSWORD", "kent_dev_password")
+KENT_DB_NAME = os.environ.get("KENT_DB_NAME", "kent")
+DB_DSN = (
+    f"postgresql://{KENT_DB_USER}:{KENT_DB_PASSWORD}"
+    f"@{KENT_DB_HOST}:{KENT_DB_PORT}/{KENT_DB_NAME}"
+)
+
+# OpenAI API для embeddings (опционально — без него работает mock embedding)
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dimensions
+EMBEDDING_DIM = 1536
 
 _SECRET_PATTERN = re.compile(r"(token|secret|password|api[_-]?key|auth)", re.IGNORECASE)
 
@@ -187,6 +208,48 @@ class ChatResponse(BaseModel):
     forwarded_to: str
     response: Optional[Any] = None
     error: Optional[str] = None
+
+
+# ─── RAG memory schemas ─────────────────────────────────────────
+
+class MemoryStoreRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10_000,
+                         description="Текст для сохранения в памяти")
+    namespace: str = Field("default", max_length=100,
+                           description="Контекст (user_id, agent_id, etc.)")
+    metadata: dict = Field(default_factory=dict,
+                           description="Произвольные метаданные (JSON)")
+
+
+class MemoryStoreResponse(BaseModel):
+    id: int
+    namespace: str
+    embedding_method: str = Field(..., description="'openai' или 'mock'")
+    stored_at: str
+
+
+class MemorySearchResult(BaseModel):
+    id: int
+    content: str
+    namespace: str
+    metadata: dict
+    similarity: float = Field(..., description="Косинусное сходство [0..1]; 1=идентично")
+    created_at: str
+
+
+class MemorySearchResponse(BaseModel):
+    query: str
+    namespace: str
+    embedding_method: str
+    count: int
+    results: list[MemorySearchResult]
+
+
+class MemoryStatsResponse(BaseModel):
+    total_records: int
+    namespaces: list[dict] = Field(..., description="Список {namespace, count}")
+    db_reachable: bool
+    embedding_method: str
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -387,6 +450,106 @@ def _safe_read_file(file_path: Path, max_size: int = 1_000_000) -> Optional[str]
 
 
 # ═══════════════════════════════════════════════════════════════
+#  RAG memory — embeddings + PostgreSQL pool
+# ═══════════════════════════════════════════════════════════════
+
+def _mock_embedding(text: str) -> list[float]:
+    """
+    Детерминированный mock embedding на базе hash(text).
+
+    Используется когда OPENAI_API_KEY не задан. Один и тот же текст всегда
+    даёт один и тот же вектор → поиск работает корректно.
+
+    НЕ использовать в production — настоящие OpenAI embeddings гораздо лучше
+    отражают смысл текста.
+    """
+    rng = random.Random(hashlib.sha256(text.encode("utf-8")).digest())
+    vec = [rng.uniform(-1.0, 1.0) for _ in range(EMBEDDING_DIM)]
+    norm = sum(v * v for v in vec) ** 0.5
+    return [v / norm for v in vec] if norm > 0 else vec
+
+
+async def _openai_embedding(text: str) -> list[float]:
+    """Получить embedding от OpenAI text-embedding-3-small."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+        resp = await client.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={"model": OPENAI_EMBEDDING_MODEL, "input": text},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["data"][0]["embedding"]
+
+
+async def generate_embedding(text: str) -> tuple[list[float], str]:
+    """
+    Сгенерировать embedding для текста.
+
+    Возвращает (vector, method) где method = 'openai' или 'mock'.
+    Fallback на mock если OPENAI_API_KEY не задан или вызов упал.
+    """
+    if OPENAI_API_KEY:
+        try:
+            return await _openai_embedding(text), "openai"
+        except (httpx.HTTPError, KeyError, ValueError):
+            pass  # Fallback на mock
+    return _mock_embedding(text), "mock"
+
+
+# Connection pool — создаётся в lifespan, переиспользуется в endpoints
+_db_pool: Optional[AsyncConnectionPool] = None
+
+
+async def _setup_pool_connection(conn) -> None:
+    """Хук: регистрируем pgvector adapter на каждом новом соединении."""
+    await register_vector_async(conn)
+
+
+@asynccontextmanager
+async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
+    """
+    FastAPI lifespan: открываем connection pool на старте,
+    закрываем на shutdown.
+
+    Если PostgreSQL недоступен — приложение всё равно стартует, но memory-endpoints
+    будут возвращать 503. Это позволяет API работать даже без БД.
+    """
+    global _db_pool
+    try:
+        _db_pool = AsyncConnectionPool(
+            DB_DSN,
+            min_size=1,
+            max_size=5,
+            open=False,
+            configure=_setup_pool_connection,
+        )
+        await _db_pool.open(wait=True, timeout=10.0)
+    except Exception as exc:
+        # Logging вместо raise — позволяем API работать без БД
+        print(f"[startup] PostgreSQL unavailable: {type(exc).__name__}: {exc}")
+        _db_pool = None
+
+    yield
+
+    if _db_pool is not None:
+        await _db_pool.close()
+
+
+def _require_db_pool() -> AsyncConnectionPool:
+    """Проверить что pool доступен или 503."""
+    if _db_pool is None:
+        raise HTTPException(
+            status_code=503,
+            detail="PostgreSQL недоступен — RAG memory endpoints отключены",
+        )
+    return _db_pool
+
+
+# ═══════════════════════════════════════════════════════════════
 #  Auth
 # ═══════════════════════════════════════════════════════════════
 
@@ -436,13 +599,14 @@ app = FastAPI(
     title="Kent AI Assistant API",
     description=(
         "Управляющий API для Kent — production-ready AI-ассистента в Telegram. "
-        "Health, skills, integrations, kentbytes, OpenClaw proxy, WebSocket events, "
-        "secure config viewer."
+        "Health, skills, integrations, kentbytes, OpenClaw proxy, RAG memory "
+        "(pgvector), WebSocket events, secure config viewer."
     ),
     version=KENT_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # Rate limiting middleware
@@ -766,6 +930,156 @@ async def telegram_webhook(request: Request):
             status_code=502,
             detail=f"OpenClaw недоступен: {type(exc).__name__}",
         )
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Endpoints — RAG memory (pgvector)
+# ═══════════════════════════════════════════════════════════════
+
+@app.post("/memory/store", response_model=MemoryStoreResponse, tags=["memory"],
+          dependencies=[Depends(verify_token)],
+          summary="Сохранить текст в RAG-память")
+@limiter.limit("30/minute")
+async def memory_store(request: Request, payload: MemoryStoreRequest) -> MemoryStoreResponse:
+    """
+    Сохранить текст в БД с embedding'ом.
+
+    Использует OpenAI text-embedding-3-small (1536 dim) если задан OPENAI_API_KEY,
+    иначе fallback на детерминированный mock embedding.
+    """
+    pool = _require_db_pool()
+    embedding, method = await generate_embedding(payload.content)
+
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO embeddings (namespace, content, embedding, metadata)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, created_at
+                """,
+                (payload.namespace, payload.content, embedding, json.dumps(payload.metadata)),
+            )
+            row = await cur.fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="Insert returned no row")
+
+    return MemoryStoreResponse(
+        id=row[0],
+        namespace=payload.namespace,
+        embedding_method=method,
+        stored_at=row[1].isoformat() if row[1] else datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@app.get("/memory/search", response_model=MemorySearchResponse, tags=["memory"],
+         dependencies=[Depends(verify_token)],
+         summary="Семантический поиск по RAG-памяти")
+@limiter.limit("60/minute")
+async def memory_search(
+    request: Request,
+    query: str,
+    k: int = 5,
+    namespace: str = "default",
+) -> MemorySearchResponse:
+    """
+    Найти top-k записей похожих по смыслу на query.
+
+    Использует cosine similarity (оператор `<=>` в pgvector).
+    Чем выше `similarity` (1=точное совпадение, 0=противоположности).
+    """
+    if not (1 <= k <= 100):
+        raise HTTPException(status_code=400, detail="k должен быть в диапазоне [1, 100]")
+    if not query.strip():
+        raise HTTPException(status_code=400, detail="query не может быть пустым")
+
+    pool = _require_db_pool()
+    embedding, method = await generate_embedding(query)
+
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT id, content, namespace, metadata,
+                       1 - (embedding <=> %s::vector) AS similarity,
+                       created_at
+                FROM embeddings
+                WHERE namespace = %s
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (embedding, namespace, embedding, k),
+            )
+            rows = await cur.fetchall()
+
+    results = [
+        MemorySearchResult(
+            id=r[0],
+            content=r[1],
+            namespace=r[2],
+            metadata=r[3] if isinstance(r[3], dict) else json.loads(r[3] or "{}"),
+            similarity=float(r[4]),
+            created_at=r[5].isoformat() if r[5] else "",
+        )
+        for r in rows
+    ]
+    return MemorySearchResponse(
+        query=query,
+        namespace=namespace,
+        embedding_method=method,
+        count=len(results),
+        results=results,
+    )
+
+
+@app.get("/memory/stats", response_model=MemoryStatsResponse, tags=["memory"],
+         dependencies=[Depends(verify_token)],
+         summary="Статистика RAG-памяти")
+@limiter.limit("30/minute")
+async def memory_stats(request: Request) -> MemoryStatsResponse:
+    """Сколько записей всего и по каждому namespace."""
+    if _db_pool is None:
+        return MemoryStatsResponse(
+            total_records=0,
+            namespaces=[],
+            db_reachable=False,
+            embedding_method="openai" if OPENAI_API_KEY else "mock",
+        )
+
+    async with _db_pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM embeddings")
+            total = (await cur.fetchone())[0]
+
+            await cur.execute(
+                "SELECT namespace, COUNT(*) FROM embeddings GROUP BY namespace ORDER BY COUNT(*) DESC"
+            )
+            ns_rows = await cur.fetchall()
+
+    return MemoryStatsResponse(
+        total_records=total,
+        namespaces=[{"namespace": r[0], "count": r[1]} for r in ns_rows],
+        db_reachable=True,
+        embedding_method="openai" if OPENAI_API_KEY else "mock",
+    )
+
+
+@app.delete("/memory/{memory_id}", tags=["memory"],
+            dependencies=[Depends(verify_token)],
+            summary="Удалить запись из RAG-памяти")
+@limiter.limit("30/minute")
+async def memory_delete(request: Request, memory_id: int) -> dict:
+    """Удалить одну запись по id."""
+    pool = _require_db_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("DELETE FROM embeddings WHERE id = %s", (memory_id,))
+            deleted = cur.rowcount > 0
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Memory id={memory_id} не найдена")
+    return {"deleted": True, "id": memory_id}
 
 
 # ═══════════════════════════════════════════════════════════════

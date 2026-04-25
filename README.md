@@ -42,7 +42,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Refusned/Kent-Overlay/main/i
 | **Скиллы** | 7 core + 8 beta + 2 experimental ([подробности](READINESS.md)) |
 | **Автоматизация** | 5 cron-задач: утренний брифинг, health-check, отчёт, SMM, бэкап |
 | **Рецепты** | 31 KentBytes в 6 категориях (бухгалтеры, предприниматели, фрилансеры, юристы, SMM, студенты) |
-| **API Gateway** | FastAPI на порту 8000: `/health`, `/skills`, `/integrations`, `/metrics`, `/docs` (Swagger UI) |
+| **API Gateway** | FastAPI на порту 8000: 17+ REST endpoints + WebSocket, Swagger UI на `/docs`, Bearer auth, rate limiting |
+| **RAG Memory** | PostgreSQL + pgvector для semantic search: `POST /memory/store`, `GET /memory/search`, OpenAI embeddings (с fallback на mock) |
 
 ## Требования
 

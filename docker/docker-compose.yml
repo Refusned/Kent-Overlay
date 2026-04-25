@@ -47,11 +47,41 @@ services:
     networks:
       - internal
 
+  postgres:
+    # PostgreSQL 16 с pgvector расширением — RAG memory storage
+    image: pgvector/pgvector:pg16
+    container_name: kent-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5433:5432"   # Внешний 5433 (5432 может быть занят на хосте) → 5432 в контейнере
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../api/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      - POSTGRES_USER=kent
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kent_dev_password}
+      - POSTGRES_DB=kent
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kent -d kent"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
   api:
-    # FastAPI gateway — read-only HTTP API на /health, /skills, /integrations, /metrics, /docs
+    # FastAPI gateway — REST API + WebSocket
     build: ../api
     container_name: kent-api
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"   # Только localhost — публикуй через reverse-proxy если нужно наружу
     volumes:
@@ -68,6 +98,14 @@ services:
       # В prod задавай: KENT_API_TOKEN=<длинный-случайный-токен> docker compose up
       - KENT_API_TOKEN=${KENT_API_TOKEN:-}
       - KENT_CORS_ORIGINS=${KENT_CORS_ORIGINS:-*}
+      # PostgreSQL для RAG memory storage
+      - KENT_DB_HOST=postgres
+      - KENT_DB_PORT=5432
+      - KENT_DB_USER=kent
+      - KENT_DB_PASSWORD=${POSTGRES_PASSWORD:-kent_dev_password}
+      - KENT_DB_NAME=kent
+      # OpenAI API для embeddings (опционально — без него работает mock embedding)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     mem_limit: 256m         # FastAPI лёгкий — 256MB хватает с запасом
     cap_drop:
       - ALL
@@ -87,6 +125,8 @@ services:
 
 volumes:
   openclaw-config:
+    driver: local
+  postgres-data:
     driver: local
 
 networks:
