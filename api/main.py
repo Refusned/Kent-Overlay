@@ -252,6 +252,60 @@ class MemoryStatsResponse(BaseModel):
     embedding_method: str
 
 
+# ─── LangChain / LangGraph schemas ──────────────────────────────
+
+class LangChainInfoResponse(BaseModel):
+    langchain_version: str
+    langgraph_version: str
+    llm_provider: str
+    embeddings_provider: str
+    vectorstore: str
+    vectorstore_collection: str
+    components_demonstrated: list[str]
+
+
+class LangChainChainRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+
+
+class LangChainChainResponse(BaseModel):
+    question: str
+    answer: str
+
+
+class LangChainRagAddRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10_000)
+    metadata: dict = Field(default_factory=dict)
+
+
+class LangChainRagAddResponse(BaseModel):
+    id: str
+    content: str
+
+
+class LangChainRagSearchResult(BaseModel):
+    content: str
+    metadata: dict
+    score: float = Field(..., description="Cosine distance — чем меньше, тем ближе")
+
+
+class LangChainRagSearchResponse(BaseModel):
+    query: str
+    count: int
+    results: list[LangChainRagSearchResult]
+
+
+class LangGraphWorkflowRequest(BaseModel):
+    user_input: str = Field(..., min_length=1, max_length=2000)
+
+
+class LangGraphWorkflowResponse(BaseModel):
+    user_input: str
+    intent: str = Field(..., description="Классификация: greeting / question / command")
+    response: str
+    used_rag: bool = Field(..., description="Был ли использован RAG для ответа")
+
+
 # ═══════════════════════════════════════════════════════════════
 #  Каталог интеграций
 # ═══════════════════════════════════════════════════════════════
@@ -1080,6 +1134,123 @@ async def memory_delete(request: Request, memory_id: int) -> dict:
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Memory id={memory_id} не найдена")
     return {"deleted": True, "id": memory_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Endpoints — LangChain / LangGraph
+# ═══════════════════════════════════════════════════════════════
+
+# Импортируем lazy чтобы не блокировать старт API если LangChain дёрнет ImportError
+try:
+    from langchain_module import (  # noqa: E402
+        get_info as _lc_get_info,
+        run_simple_chain as _lc_run_chain,
+        langchain_rag_add as _lc_rag_add,
+        langchain_rag_search as _lc_rag_search,
+        run_workflow as _lc_run_workflow,
+    )
+    _LANGCHAIN_AVAILABLE = True
+except ImportError as exc:
+    _LANGCHAIN_AVAILABLE = False
+    _LANGCHAIN_IMPORT_ERROR = str(exc)
+
+
+def _require_langchain() -> None:
+    if not _LANGCHAIN_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail=f"LangChain недоступен: {_LANGCHAIN_IMPORT_ERROR}",
+        )
+
+
+@app.get("/langchain/info", response_model=LangChainInfoResponse, tags=["langchain"],
+         dependencies=[Depends(verify_token)],
+         summary="Информация о LangChain components")
+@limiter.limit("60/minute")
+async def langchain_info(request: Request) -> LangChainInfoResponse:
+    """
+    Какие LangChain/LangGraph components используются в Kent + версии.
+
+    Полезно для собеседования — показать рекрутеру конкретные классы.
+    """
+    _require_langchain()
+    info = _lc_get_info()
+    return LangChainInfoResponse(**info)
+
+
+@app.post("/langchain/chain", response_model=LangChainChainResponse, tags=["langchain"],
+          dependencies=[Depends(verify_token)],
+          summary="Простая LangChain цепочка (PromptTemplate | LLM | OutputParser)")
+@limiter.limit("20/minute")
+async def langchain_chain(request: Request, payload: LangChainChainRequest) -> LangChainChainResponse:
+    """
+    Демонстрация LCEL (LangChain Expression Language).
+
+    Pipeline: ChatPromptTemplate | ChatOpenAI/Mock | StrOutputParser
+
+    Без OPENAI_API_KEY используется FakeListChatModel — возвращает
+    предсказуемые mock-ответы для тестирования pipeline.
+    """
+    _require_langchain()
+    answer = await _lc_run_chain(payload.question)
+    return LangChainChainResponse(question=payload.question, answer=answer)
+
+
+@app.post("/langchain/rag/add", response_model=LangChainRagAddResponse, tags=["langchain"],
+          dependencies=[Depends(verify_token)],
+          summary="Добавить документ через LangChain PGVector")
+@limiter.limit("30/minute")
+async def langchain_rag_add(request: Request, payload: LangChainRagAddRequest) -> LangChainRagAddResponse:
+    """
+    Сохранить документ через стандартный LangChain PGVector.
+
+    Это альтернатива нашему ручному /memory/store — тот же бэкенд (pgvector),
+    но через индустриальный интерфейс LangChain.
+    """
+    _require_langchain()
+    doc_id = await _lc_rag_add(payload.content, payload.metadata)
+    return LangChainRagAddResponse(id=doc_id, content=payload.content)
+
+
+@app.post("/langchain/rag/search", response_model=LangChainRagSearchResponse, tags=["langchain"],
+          dependencies=[Depends(verify_token)],
+          summary="Поиск через LangChain PGVector")
+@limiter.limit("60/minute")
+async def langchain_rag_search(request: Request, query: str, k: int = 5) -> LangChainRagSearchResponse:
+    """Семантический поиск через LangChain PGVector similarity_search."""
+    _require_langchain()
+    if not (1 <= k <= 50):
+        raise HTTPException(status_code=400, detail="k должен быть в [1, 50]")
+    if not query.strip():
+        raise HTTPException(status_code=400, detail="query не может быть пустым")
+
+    results = await _lc_rag_search(query, k=k)
+    return LangChainRagSearchResponse(
+        query=query,
+        count=len(results),
+        results=[LangChainRagSearchResult(**r) for r in results],
+    )
+
+
+@app.post("/langgraph/workflow", response_model=LangGraphWorkflowResponse, tags=["langchain"],
+          dependencies=[Depends(verify_token)],
+          summary="LangGraph workflow с условным ветвлением")
+@limiter.limit("20/minute")
+async def langgraph_workflow(request: Request, payload: LangGraphWorkflowRequest) -> LangGraphWorkflowResponse:
+    """
+    LangGraph stateful workflow:
+
+      START → classify_intent → [routing] → handle_greeting | handle_question | handle_command → END
+
+    Демонстрирует:
+    - StateGraph с TypedDict-состоянием
+    - Conditional edges (routing по intent)
+    - Множественные узлы с разной логикой
+    - RAG-обогащение для вопросов
+    """
+    _require_langchain()
+    final_state = await _lc_run_workflow(payload.user_input)
+    return LangGraphWorkflowResponse(**final_state)
 
 
 # ═══════════════════════════════════════════════════════════════
