@@ -47,6 +47,36 @@ services:
     networks:
       - internal
 
+  api:
+    # FastAPI gateway — read-only HTTP API на /health, /skills, /integrations, /metrics, /docs
+    build: ../api
+    container_name: kent-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"   # Только localhost — публикуй через reverse-proxy если нужно наружу
+    volumes:
+      # Read-only монтирование workspace — API только читает skills, ничего не пишет
+      - ../workspace:/root/.openclaw/workspace:ro
+    environment:
+      - KENT_VERSION=1.0.0
+      - KENT_WORKSPACE_PATH=/root/.openclaw/workspace
+    mem_limit: 256m         # FastAPI лёгкий — 256MB хватает с запасом
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
 volumes:
   openclaw-config:
     driver: local

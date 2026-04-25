@@ -42,6 +42,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Refusned/Kent-Overlay/main/i
 | **Скиллы** | 7 core + 8 beta + 2 experimental ([подробности](READINESS.md)) |
 | **Автоматизация** | 5 cron-задач: утренний брифинг, health-check, отчёт, SMM, бэкап |
 | **Рецепты** | 31 KentBytes в 6 категориях (бухгалтеры, предприниматели, фрилансеры, юристы, SMM, студенты) |
+| **API Gateway** | FastAPI на порту 8000: `/health`, `/skills`, `/integrations`, `/metrics`, `/docs` (Swagger UI) |
 
 ## Требования
 
@@ -79,12 +80,16 @@ kent-overlay/
     SOUL.md            # Характер и тон (432 строки)
     SECURITY.md        # Неизменяемые правила безопасности
     AGENTS.md          # Операционное поведение (602 строки)
-    skills/            # 17 кастомных скиллов
+    skills/            # 17+ кастомных скиллов
     kentbytes/         # 31 рецепт в 6 категориях
+  api/                 # FastAPI gateway
+    main.py            # HTTP API: /health, /skills, /integrations, /metrics
+    Dockerfile         # python:3.12-slim, non-root user, healthcheck
+    requirements.txt   # fastapi + uvicorn + pydantic
   config/
     openclaw.json      # Конфиг OpenClaw (JSON5)
   docker/
-    docker-compose.yml # openclaw + browser контейнеры
+    docker-compose.yml # openclaw + browser + api контейнеры
   tests/               # Автоматические и ручные тесты
   docs/                # 14 файлов документации
 ```
