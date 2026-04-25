@@ -1,7 +1,30 @@
+<div align="center">
+
+![Kent — Личный AI-ассистент в Telegram](docs/screenshots/hero.png)
+
 # Kent AI Assistant
 
-Персонализированный AI бизнес-ассистент и SMM-менеджер, доставляемый как Telegram-бот.
-Overlay (надстройка) над платформой [OpenClaw](https://openclaw.dev).
+**Production-ready AI-ассистент в Telegram. 17 кастомных скиллов. Деплой одной командой на VPS.**
+
+[Try the bot](https://t.me/ask_kent_bot) · [Architecture](#структура-проекта) · [Deployment](docs/DEPLOYMENT.md) · [Skills](#что-умеет-kent-v1)
+
+</div>
+
+---
+
+## О проекте
+
+Kent — это не "ещё один чат-бот над ChatGPT". Это **цифровой сотрудник**, который доставляется клиенту как готовый Telegram-бот с собственной личностью, долговременной памятью, 17 кастомными скиллами и автоматизацией через cron.
+
+Под капотом — overlay (надстройка) над платформой [OpenClaw](https://openclaw.dev), упакованная в Docker Compose с идемпотентным деплоем, мониторингом, бэкапами, hardened-конфигом (cap_drop ALL, loopback) и интеграциями с Google Workspace, Telegram, ChatGPT/DALL-E, ElevenLabs TTS, Yandex IoT.
+
+Цель — закрыть рутину малого бизнеса (SMM, CRM, документы, финансы, лиды) одним инструментом, который ставится на VPS клиента за 10 минут и стоит дешевле найма помощника.
+
+## Кому интересно
+
+- **Предпринимателям** — как упаковать AI-агента в продаваемый B2B-продукт: [Product Blueprint](docs/business/PRODUCT-BLUEPRINT.md) (концепция, архитектура персоны, скиллов) и [Tech Plan](docs/business/TECH-PLAN.md) (3 варианта деплоя — от ручного MVP до автоматизированной SaaS)
+- **Разработчикам** — production-ready overlay над OpenClaw с 17 кастомными скиллами, hooks и cron
+- **Клиентам** — `bash install.sh` → персональный бот на твоём VPS за 10 минут
 
 ## Быстрый старт
 
@@ -69,3 +92,19 @@ kent-overlay/
 ## Версия
 
 1.0.0 | OpenClaw 2026.4.10 | [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## Author
+
+Создан и поддерживается **Романом Барминым** ([@Refusned](https://github.com/Refusned)).
+
+Открыт к сотрудничеству по AI-инжинирингу, разработке агентов и автоматизации:
+- Telegram: [@ask_kent_bot](https://t.me/ask_kent_bot) (демо-бот) · email: refusned@gmail.com
+- Pet projects: Kent (этот репо), Hyper Bot, WB Bot, Agent Teams и др.
+
+<div align="center">
+
+![Try Kent in Telegram](docs/screenshots/cta.png)
+
+</div>
