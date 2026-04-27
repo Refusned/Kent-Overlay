@@ -366,35 +366,73 @@ PROVIDER_CLASSES = {
     "anthropic": AnthropicProvider,
 }
 
+# Российские провайдеры — для compliance-режима (152-ФЗ ПДн в РФ).
+RUSSIA_ONLY_PROVIDERS = {"yandex", "gigachat"}
+
+# Compliance-флаг — форсит on-prem РФ-only providers.
+# Используется при коммерческом deployment с обработкой ПДн российских граждан
+# (152-ФЗ запрещает передачу ПДн за рубеж).
+#
+# Когда KENT_RUSSIA_COMPLIANCE_MODE=true:
+#   - get_provider("openai") → ValueError (запрещён в РФ-режиме)
+#   - get_provider("yandex") → YandexGPTProvider (разрешён)
+#   - list_providers() помечает запрещённые провайдеры как blocked_by_compliance
+def is_russia_compliance_mode() -> bool:
+    """Включён ли режим 152-ФЗ-совместимости (только on-prem РФ providers)."""
+    return os.environ.get("KENT_RUSSIA_COMPLIANCE_MODE", "").lower() in (
+        "1", "true", "yes", "on",
+    )
+
 
 def get_provider(name: str) -> LLMProvider:
     """
     Получить LLM-провайдер по имени.
 
     Если провайдер настроен — возвращаем его, иначе — MockProvider.
+
+    Если включён KENT_RUSSIA_COMPLIANCE_MODE — провайдеры вне РФ блокируются
+    с ValueError (для 152-ФЗ deployments).
     """
-    cls = PROVIDER_CLASSES.get(name.lower())
+    name_lower = name.lower()
+
+    if is_russia_compliance_mode() and name_lower not in RUSSIA_ONLY_PROVIDERS:
+        raise ValueError(
+            f"Provider '{name}' blocked by KENT_RUSSIA_COMPLIANCE_MODE. "
+            f"152-ФЗ запрещает передачу ПДн за рубеж. "
+            f"Доступные провайдеры в compliance-режиме: {sorted(RUSSIA_ONLY_PROVIDERS)}."
+        )
+
+    cls = PROVIDER_CLASSES.get(name_lower)
     if cls is None:
         raise ValueError(
             f"Unknown provider '{name}'. Доступные: {list(PROVIDER_CLASSES.keys())}"
         )
     instance = cls()
     if not instance.is_configured():
-        return MockProvider(name=name.lower(), model=f"{name}-mock")
+        return MockProvider(name=name_lower, model=f"{name}-mock")
     return instance
 
 
 def list_providers() -> list[dict]:
     """Список всех провайдеров с информацией о их статусе."""
+    compliance_on = is_russia_compliance_mode()
     result = []
     for name, cls in PROVIDER_CLASSES.items():
         instance = cls()
+        blocked = compliance_on and name not in RUSSIA_ONLY_PROVIDERS
+        if blocked:
+            status = "blocked_by_compliance (152-ФЗ mode)"
+        elif instance.is_configured():
+            status = "ready"
+        else:
+            status = "mock (no API key)"
         result.append({
             "name": name,
             "model": instance.model,
             "configured": instance.is_configured(),
             "country": _country_for_provider(name),
-            "status": "ready" if instance.is_configured() else "mock (no API key)",
+            "status": status,
+            "blocked_by_compliance": blocked,
         })
     return result
 

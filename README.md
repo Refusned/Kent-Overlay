@@ -44,7 +44,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Refusned/Kent-Overlay/main/i
 | **Рецепты** | 31 KentBytes в 6 категориях (бухгалтеры, предприниматели, фрилансеры, юристы, SMM, студенты) |
 | **API Gateway** | FastAPI на порту 8000: 17+ REST endpoints + WebSocket, Swagger UI на `/docs`, Bearer auth, rate limiting |
 | **RAG Memory** | PostgreSQL + pgvector для semantic search (vanilla psycopg + LangChain PGVector). LangChain LCEL chains, LangGraph workflow с conditional routing |
-| **Multi-LLM** | Унифицированный интерфейс для 4 провайдеров: OpenAI, Anthropic, YandexGPT, GigaChat (`POST /llm/chat?provider=...`) |
+| **Multi-LLM** | Унифицированный интерфейс для 4 провайдеров: OpenAI, Anthropic, YandexGPT, GigaChat (`POST /llm/chat?provider=...`). Режим **`KENT_RUSSIA_COMPLIANCE_MODE=true`** форсит on-prem РФ-only providers (для 152-ФЗ deployments — обработка ПДн без передачи за рубеж) |
 
 ## Требования
 
@@ -95,6 +95,21 @@ kent-overlay/
   tests/               # Автоматические и ручные тесты
   docs/                # 14 файлов документации
 ```
+
+## Compliance / 152-ФЗ режим
+
+Для коммерческих развёртываний с обработкой ПДн российских граждан Kent поддерживает **on-prem РФ-only режим**. Установи переменную окружения:
+
+```bash
+KENT_RUSSIA_COMPLIANCE_MODE=true
+```
+
+В этом режиме:
+- Доступны только российские LLM-провайдеры (`yandex`, `gigachat`).
+- Запросы к OpenAI / Anthropic / Gemini / DeepSeek **блокируются с ValueError** на уровне Provider Factory (см. `api/russian_llm.py`).
+- `GET /llm/providers` помечает заблокированные провайдеры как `blocked_by_compliance: true`.
+
+Это позволяет деплоить Kent в банках, госкомпаниях и enterprise-сегменте без нарушения 152-ФЗ.
 
 ## Версия
 
