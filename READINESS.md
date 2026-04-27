@@ -23,9 +23,9 @@
 
 ---
 
-## Кастомные скиллы (17 шт.)
+## Кастомные скиллы (18 шт.)
 
-### Core (7) — работают из коробки
+### Core (8) — работают из коробки
 
 | Скилл | Строк | Команда | Ext deps | Env | Known issues |
 |-------|-------|---------|----------|-----|-------------|
@@ -36,6 +36,7 @@
 | social-drafts | 278 | /content | DALL-E (opt) | Нет | Генерация картинок требует ChatGPT OAuth |
 | content-calendar | 172 | /smm | Google Calendar (opt) | GOOGLE_* | Calendar sync опционален |
 | weather-fallback | 57 | — | wttr.in API | Нет | Зависит от внешнего API |
+| weekly-roi-report | 99 | /report | workspace/memory | Нет | Cron `weekly-report` каждый понедельник 9:00 |
 
 ### Beta (8) — работают при наличии интеграций
 
@@ -78,24 +79,24 @@
 | capability-evolver | Самоулучшение агента | Да (internal) |
 | self-improving-agent | Самоулучшение агента | Да (internal) |
 
-> **Known issue:** ClawHub `humanizer` и `crm` могут конфликтовать по триггерам с Kent `humanize` и `crm-notes`. Требует runtime-тестирования.
+> **Решено:** ClawHub `humanizer` и `crm` отключены в deploy.sh — конфликтовали по триггерам с Kent `humanize` и `crm-notes`. Используются только Kent-скиллы.
 
 ---
 
-## Фантомные скиллы (в docs, НЕ реализованы)
+## Скоро: скиллы в разработке
 
-Следующие скиллы упоминаются в docs/SKILLS-BUNDLE.md, но **не имеют реализации** в workspace/skills/:
+Следующие скиллы находятся в разработке и появятся в ближайших обновлениях:
 
 | Скилл | Описание | Статус |
 |-------|---------|--------|
-| contract-analyzer | Анализ договоров | PLANNED |
-| summarizer | Суммаризация документов | PLANNED |
-| meeting-notes | Расшифровка встреч | PLANNED |
-| competitor-monitor | Мониторинг конкурентов | PLANNED |
-| wildberries-ozon | Маркетплейсы WB/Ozon | PLANNED |
-| vk-manager | Управление ВКонтакте | PLANNED |
-| gosuslugi-checker | Проверка контрагентов | PLANNED |
-| cdek-tracker | Трекинг СДЭК | PLANNED |
+| contract-analyzer | Анализ договоров | СКОРО |
+| summarizer | Суммаризация документов | СКОРО |
+| meeting-notes | Расшифровка встреч | СКОРО |
+| competitor-monitor | Мониторинг конкурентов | СКОРО |
+| wildberries-ozon | Маркетплейсы WB/Ozon | СКОРО |
+| vk-manager | Управление ВКонтакте | СКОРО |
+| gosuslugi-checker | Проверка контрагентов | СКОРО |
+| cdek-tracker | Трекинг СДЭК | СКОРО |
 
 ---
 
