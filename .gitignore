@@ -3,6 +3,10 @@
 credentials/
 sessions/
 
+# Внутренние документы (не для публичного репо)
+BissnesPlan.md
+ПОЛНЫЙ_ПРОЕКТ_KENT.pdf
+
 # Данные клиента
 memory/
 gateway.db

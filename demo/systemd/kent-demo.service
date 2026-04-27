@@ -1,0 +1,44 @@
+[Unit]
+Description=Kent Demo Bot (OpenClaw Gateway)
+Documentation=https://github.com/Refusned/Kent-Overlay
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=kent
+Group=kent
+WorkingDirectory=/home/kent
+Environment=NODE_ENV=production
+Environment=OPENCLAW_DISABLE_BONJOUR=1
+EnvironmentFile=/home/kent/.openclaw/.env
+ExecStartPre=/bin/rm -f /home/kent/.openclaw/gateway.pid
+ExecStart=/usr/bin/env openclaw gateway start --foreground
+ExecStop=/usr/bin/env openclaw gateway stop
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/kent/.openclaw
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Resource limits
+MemoryMax=2G
+TasksMax=256
+LimitNOFILE=65536
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kent-demo
+
+[Install]
+WantedBy=multi-user.target

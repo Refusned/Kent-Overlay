@@ -1,0 +1,155 @@
+{
+  // ═══════════════════════════════════════════════════════════════
+  //  OpenClaw — Конфиг для ДЕМО-бота Kent (@KentDemoBot)
+  //  Ограниченный функционал, жёсткая безопасность, лимит 15 msg/день
+  // ═══════════════════════════════════════════════════════════════
+
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "channelHealthCheckMinutes": 5
+  },
+
+  "agents": {
+    "defaults": {
+      "sandbox": {
+        "mode": "docker",
+        "network": "none",
+        "timeout": 30,
+        "memoryLimit": "256m"
+      },
+      "params": {
+        "cacheRetention": "short"
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "30m",
+        "keepLastAssistants": 2
+      },
+      "compaction": {
+        "reserveTokensFloor": 20000
+      }
+    }
+  },
+
+  "memory": {
+    "backend": "builtin"
+  },
+
+  "tools": {
+    "profile": "full",
+    "deny": [
+      "group:automation",
+      "sessions_spawn",
+      "nodes",
+      "canvas",
+      "llm_task"
+    ]
+  },
+
+  "approvals": {
+    "exec": {
+      "enabled": false
+    }
+  },
+
+  "auth": {
+    "profiles": {
+      "openai-codex:default": {
+        "provider": "openai-codex",
+        "mode": "oauth"
+      }
+    },
+    "order": {
+      "openai-codex": ["openai-codex:default"]
+    }
+  },
+
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "token": "${OPENCLAW_HOOKS_TOKEN}",
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": { "enabled": true },
+        "bootstrap-extra-files": {
+          "enabled": true,
+          "patterns": ["SOUL.md", "SECURITY.md", "AGENTS.md"]
+        },
+        "session-memory": { "enabled": false }
+      }
+    }
+  },
+
+  "plugins": {
+    "enabled": false
+  },
+
+  // Демо-бот: открыт для всех (не pairing)
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${DEMO_TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "open",
+      "streaming": {
+        "mode": "partial",
+        "chunkMode": "newline"
+      },
+      "textChunkLimit": 4000,
+      "linkPreview": false,
+      "ackReaction": "\ud83d\udc54",
+      "healthMonitor": {
+        "enabled": true
+      },
+      "customCommands": [
+        { "command": "start",     "description": "\u041d\u0430\u0447\u0430\u0442\u044c \u0440\u0430\u0431\u043e\u0442\u0443 \u0441 Kent" },
+        { "command": "help",      "description": "\u0421\u043f\u0440\u0430\u0432\u043a\u0430 \u043f\u043e \u043a\u043e\u043c\u0430\u043d\u0434\u0430\u043c" },
+        { "command": "content",   "description": "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f \u043f\u043e\u0441\u0442\u0430 \u0434\u043b\u044f \u0441\u043e\u0446\u0441\u0435\u0442\u0435\u0439" },
+        { "command": "humanize",  "description": "\u041e\u0447\u0435\u043b\u043e\u0432\u0435\u0447\u0438\u0442\u044c AI-\u0442\u0435\u043a\u0441\u0442" },
+        { "command": "faq",       "description": "\u041e\u0442\u0432\u0435\u0442 \u043d\u0430 \u0432\u043e\u043f\u0440\u043e\u0441" },
+        { "command": "code",      "description": "\u041f\u043e\u043c\u043e\u0449\u044c \u0441 \u043a\u043e\u0434\u043e\u043c" }
+      ]
+    }
+  },
+
+  "skills": {
+    "allowBundled": [
+      "weather",
+      "openai-whisper",
+      "nano-pdf",
+      "summarize",
+      "session-logs"
+    ]
+  },
+
+  // Демо-бот: БЕЗ крон-задач
+  "cron": {
+    "enabled": false
+  },
+
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+
+  "logging": {
+    "level": "info",
+    "consoleLevel": "warn",
+    "redactSensitive": "tools",
+    "file": "~/.openclaw/logs/demo.log"
+  },
+
+  "messages": {
+    "responsePrefix": "",
+    "queue": {
+      "mode": "collect",
+      "debounceMs": 2000,
+      "cap": 5
+    }
+  }
+}

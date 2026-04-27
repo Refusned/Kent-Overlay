@@ -6,7 +6,17 @@
 
 **Production-ready AI-ассистент в Telegram. 17 кастомных скиллов. Деплой одной командой на VPS.**
 
-[Try the bot](https://t.me/ask_kent_bot) · [Architecture](#структура-проекта) · [Deployment](docs/DEPLOYMENT.md) · [Skills](#что-умеет-kent-v1)
+[![Try the bot](https://img.shields.io/badge/Telegram-@ask__kent__bot-26A5E4?logo=telegram&logoColor=white&style=for-the-badge)](https://t.me/ask_kent_bot)
+
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.4.10-9333EA)](https://openclaw.dev)
+[![152-ФЗ](https://img.shields.io/badge/152--ФЗ-Ready-orange)](#compliance--152-фз-режим)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![CI](https://github.com/Refusned/Kent-Overlay/actions/workflows/static-checks.yml/badge.svg)](https://github.com/Refusned/Kent-Overlay/actions/workflows/static-checks.yml)
+
+[Try the bot](https://t.me/ask_kent_bot) · [Architecture](#архитектура) · [Deployment](docs/DEPLOYMENT.md) · [Skills](#что-умеет-kent-v1)
 
 </div>
 
@@ -74,7 +84,48 @@ bash tests/run-all.sh smoke    # smoke-тесты (требуют запущен
 
 Ручной чеклист: [tests/MANUAL-SMOKE-CHECKLIST.md](tests/MANUAL-SMOKE-CHECKLIST.md)
 
-## Структура проекта
+## Архитектура
+
+```mermaid
+graph TB
+    User([Telegram User]) --> Bot[Telegram Bot]
+    Bot --> Gateway[FastAPI Gateway :8000<br/>Bearer auth · rate limit · WebSocket]
+    Gateway --> OpenClaw[OpenClaw Engine<br/>workspace · hooks · cron]
+
+    OpenClaw --> Skills[17+ Custom Skills<br/>core · beta · experimental]
+    OpenClaw --> Bytes[31 KentBytes<br/>6 категорий рецептов]
+    OpenClaw --> Cron[5 Cron Jobs<br/>брифинг · health · отчёт · SMM · бэкап]
+    OpenClaw --> Memory[(RAG Memory<br/>PostgreSQL + pgvector)]
+
+    OpenClaw --> LLM{Multi-LLM<br/>Provider Factory}
+    LLM --> OpenAI[OpenAI]
+    LLM --> Anthropic[Anthropic]
+    LLM --> Yandex[YandexGPT]
+    LLM --> GigaChat[GigaChat]
+
+    OpenClaw --> Integrations[External Integrations]
+    Integrations --> Google[Google Workspace]
+    Integrations --> ElevenLabs[ElevenLabs TTS]
+    Integrations --> DALLE[DALL-E]
+    Integrations --> IoT[Yandex IoT]
+
+    style User fill:#5b8def,color:#fff
+    style Memory fill:#003b57,color:#fff
+    style OpenClaw fill:#f7a072,color:#000
+    style LLM fill:#9333ea,color:#fff
+```
+
+**Ключевые архитектурные решения:**
+
+- 🛡️ **Hardened Docker Compose** — `cap_drop ALL`, loopback-only сетевая изоляция, non-root юзеры, healthchecks
+- 🔄 **LangChain + LangGraph** — LCEL chains, conditional routing через workflow-граф
+- 📦 **Repository-стиль RAG** — `pgvector` для semantic search через `vanilla psycopg + LangChain PGVector`
+- 🌐 **Multi-LLM Provider Factory** — единый интерфейс к 4 провайдерам, автоматическая блокировка зарубежных при `KENT_RUSSIA_COMPLIANCE_MODE=true`
+- ⚡ **Идемпотентный деплой** — `prerequisites.sh → configure.sh → deploy.sh`, поддержка повторного запуска без побочных эффектов
+- 📊 **Production observability** — Prometheus metrics endpoint, structured logging, k6 load-tests
+
+<details>
+<summary><b>📁 Структура файлов</b></summary>
 
 ```
 kent-overlay/
@@ -87,14 +138,17 @@ kent-overlay/
   api/                 # FastAPI gateway
     main.py            # HTTP API: /health, /skills, /integrations, /metrics
     Dockerfile         # python:3.12-slim, non-root user, healthcheck
-    requirements.txt   # fastapi + uvicorn + pydantic
+    requirements.txt   # fastapi + uvicorn + pydantic + langchain
   config/
     openclaw.json      # Конфиг OpenClaw (JSON5)
   docker/
     docker-compose.yml # openclaw + browser + api контейнеры
-  tests/               # Автоматические и ручные тесты
+  demo/                # Конфигурация публичного демо-бота @KentDemoBot
+  tests/               # Автоматические и ручные тесты + k6 load-test
   docs/                # 14 файлов документации
 ```
+
+</details>
 
 ## Compliance / 152-ФЗ режим
 
